@@ -1,19 +1,20 @@
 <p align="center">
-  <img src="LogoPNG.png" alt="Logo do CatPixel" width="200">
+  <img src="assets/LogoPNG.png" alt="Logo do CatPixel" width="200">
 </p>
 
 <h1 align="center">CatPixel</h1>
 
 <p align="center">
-  Processador de imagens com interface gráfica, feito em Python.<br>
+  Processador de imagens com interface web: front-end em JavaScript e algoritmos em Python (FastAPI).<br>
   Todos os algoritmos são implementados do zero, manipulando diretamente a matriz da imagem.
 </p>
 
-> **Status:** em desenvolvimento. A leitura/gravação de imagens e a limiarização estão prontas. A interface gráfica e os demais algoritmos ainda não foram implementados (veja o [Roadmap](#roadmap)).
+> **Status:** em desenvolvimento. A leitura/gravação de imagens, a limiarização e a interface web (menus, zoom, histórico, desfazer/refazer) estão prontas. Os demais algoritmos ainda não foram implementados (veja o [Roadmap](#roadmap)).
 
 ## Sumário
 
 - [Sobre o projeto](#sobre-o-projeto)
+- [Como rodar](#como-rodar)
 - [Funcionalidades](#funcionalidades)
 - [Roadmap](#roadmap)
 - [Primeiros passos](#primeiros-passos)
@@ -28,7 +29,18 @@
 
 O CatPixel é um trabalho da disciplina de Processamento de Imagens. O objetivo é um programa com interface gráfica simples, para que uma pessoa sem experiência edite imagens salvas no próprio computador.
 
-A cada aula entra um novo conjunto de algoritmos, que a equipe implementa e adiciona ao programa.
+## Como rodar
+
+Na raiz do projeto:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate          # no Windows: .venv\Scripts\activate
+pip install -r requirements/requirements.txt
+uvicorn backend.app:app --reload --port 8765
+```
+
+Abra <http://localhost:8765> no navegador. Para parar o servidor, use `Ctrl+C`. Nas próximas vezes, basta ativar o ambiente (`source .venv/bin/activate`) e rodar o `uvicorn`.
 
 ## Funcionalidades
 
@@ -36,70 +48,70 @@ Legenda: ✅ pronto · 🚧 em andamento · ⬜ pendente
 
 ### Base
 
-| Funcionalidade | Status |
-| --- | --- |
-| Abrir imagens (BMP, JPG) | ✅ |
-| Salvar imagens (BMP, JPG) | ✅ |
-| Interface gráfica | ⬜ |
+| Funcionalidade            | Status |
+| ------------------------- | ------ |
+| Abrir imagens (BMP, JPG)  | ✅     |
+| Salvar imagens (BMP, JPG) | ✅     |
+| Interface gráfica (web)   | ✅     |
 
 ### Trabalho 1 — Operações pontuais, histograma e convolução
 
-| Funcionalidade | Status |
-| --- | --- |
-| Limiarização | ✅ |
-| Negativo | ⬜ |
-| Brilho | ⬜ |
-| Potência (correção de gama) | ⬜ |
-| Linear definida por partes | ⬜ |
-| Esteganografia | ⬜ |
-| Exibição do histograma | ⬜ |
-| Equalização de histograma | ⬜ |
-| Filtro genérico por convolução (3x3 até, no mínimo, 9x9, mesmo tamanho da original) | ⬜ |
+| Funcionalidade                                                                      | Status |
+| ----------------------------------------------------------------------------------- | ------ |
+| Limiarização                                                                        | ✅     |
+| Negativo                                                                            | ⬜     |
+| Brilho                                                                              | ⬜     |
+| Potência (correção de gama)                                                         | ⬜     |
+| Linear definida por partes                                                          | ⬜     |
+| Esteganografia                                                                      | ⬜     |
+| Exibição do histograma                                                              | ⬜     |
+| Equalização de histograma                                                           | ⬜     |
+| Filtro genérico por convolução (3x3 até, no mínimo, 9x9, mesmo tamanho da original) | ⬜     |
 
 ### Filtros espaciais
 
-| Funcionalidade | Status |
-| --- | --- |
-| Suavização pela média (simples e ponderada/Gaussiana) | ⬜ |
-| Filtro da mediana | ⬜ |
-| Aguçamento por Laplaciano | ⬜ |
-| Aguçamento High-Boost | ⬜ |
-| Sobel X e Y (com normalização para exibição) | ⬜ |
-| Detecção de bordas pela magnitude do gradiente | ⬜ |
+| Funcionalidade                                        | Status |
+| ----------------------------------------------------- | ------ |
+| Suavização pela média (simples e ponderada/Gaussiana) | ⬜     |
+| Filtro da mediana                                     | ⬜     |
+| Aguçamento por Laplaciano                             | ⬜     |
+| Aguçamento High-Boost                                 | ⬜     |
+| Sobel X e Y (com normalização para exibição)          | ⬜     |
+| Detecção de bordas pela magnitude do gradiente        | ⬜     |
 
 ### Transformações geométricas
 
-| Funcionalidade | Status |
-| --- | --- |
-| Escala (vizinho mais próximo e bilinear) | ⬜ |
-| Rotação (vizinho mais próximo e bilinear) | ⬜ |
-| Rotação com pivô especificado | ⬜ |
+| Funcionalidade                            | Status |
+| ----------------------------------------- | ------ |
+| Escala (vizinho mais próximo e bilinear)  | ⬜     |
+| Rotação (vizinho mais próximo e bilinear) | ⬜     |
+| Rotação com pivô especificado             | ⬜     |
 
 ### Domínio da frequência
 
-| Funcionalidade | Status |
-| --- | --- |
-| Transformada Discreta de Fourier (própria) | ⬜ |
-| Transformada Rápida (FFT) | ⬜ |
-| Espectro deslocado com edição pelo usuário (pincel preto, branco e suave) | ⬜ |
-| Transformada inversa a partir do espectro editado | ⬜ |
+| Funcionalidade                                                            | Status |
+| ------------------------------------------------------------------------- | ------ |
+| Transformada Discreta de Fourier (própria)                                | ⬜     |
+| Transformada Rápida (FFT)                                                 | ⬜     |
+| Espectro deslocado com edição pelo usuário (pincel preto, branco e suave) | ⬜     |
+| Transformada inversa a partir do espectro editado                         | ⬜     |
 
 ### Imagens coloridas
 
-| Funcionalidade | Status |
-| --- | --- |
-| Conversão RGB ↔ HSI | ⬜ |
-| Escala de cinza (média simples e ponderada) | ⬜ |
-| Negativo colorido | ⬜ |
-| Chroma-Key (distância da cor verde e imagem substituta ajustáveis) | ⬜ |
-| Histogramas R, G, B e I | ⬜ |
-| Equalização de histograma colorida (HSI) | ⬜ |
-| Ajuste de matiz, saturação e brilho | ⬜ |
-| Ajuste de canal (C/R, M/G, Y/B) | ⬜ |
-| Sépia | ⬜ |
-| Demais processamentos funcionando em imagens coloridas | ⬜ |
+| Funcionalidade                                                     | Status |
+| ------------------------------------------------------------------ | ------ |
+| Conversão RGB ↔ HSI                                                | ⬜     |
+| Escala de cinza (média simples e ponderada)                        | ⬜     |
+| Negativo colorido                                                  | ⬜     |
+| Chroma-Key (distância da cor verde e imagem substituta ajustáveis) | ⬜     |
+| Histogramas R, G, B e I                                            | ⬜     |
+| Equalização de histograma colorida (HSI)                           | ⬜     |
+| Ajuste de matiz, saturação e brilho                                | ⬜     |
+| Ajuste de canal (C/R, M/G, Y/B)                                    | ⬜     |
+| Sépia                                                              | ⬜     |
+| Demais processamentos funcionando em imagens coloridas             | ⬜     |
 
-> **Nota:** hoje o `load_image` converte toda imagem para escala de cinza (matriz 2D). Para as etapas coloridas, ele precisa passar a devolver `(H, W, 3)`.
+> **Nota:** hoje o `load_image` do backend converte toda imagem para escala de cinza (matriz 2D). Para as etapas coloridas, ele precisa passar a devolver `(H, W, 3)`.
 
 ## Roadmap
 
@@ -112,14 +124,14 @@ Legenda: ✅ pronto · 🚧 em andamento · ⬜ pendente
 7. ⬜ Esteganografia
 8. ⬜ Fourier e edição do espectro
 9. ⬜ Imagens coloridas (HSI, chroma-key, sépia etc.)
-10. ⬜ Interface gráfica integrando tudo
+10. 🚧 Interface gráfica integrando tudo (base pronta; cada algoritmo novo ganha um painel)
 
 ## Primeiros passos
 
 ### Pré-requisitos
 
 - Python 3.10 ou superior
-- `pip`
+- Um navegador moderno (Chrome, Firefox ou Edge)
 
 ### Instalação
 
@@ -130,18 +142,36 @@ cd catpixel
 python3 -m venv .venv
 source .venv/bin/activate
 
-pip install numpy pillow
+pip install -r requirements/requirements.txt
 ```
 
-> O projeto ainda não tem `requirements.txt`. As dependências usadas até agora são `numpy` e `Pillow`.
+As dependências são `numpy`, `Pillow` (só para abrir e salvar arquivos), `FastAPI`, `uvicorn` e `python-multipart`. Para rodar os testes, use `requirements/requirements-dev.txt`.
 
 ## Uso
 
-A interface gráfica ainda não existe (`main.py` está vazio). Por enquanto, os módulos de `model/` podem ser usados direto em Python:
+Inicie o servidor a partir da raiz do projeto:
+
+```bash
+uvicorn backend.app:app --reload --port 8765
+```
+
+Abra <http://localhost:8765> no navegador. O mesmo servidor entrega a interface e a API (a documentação automática da API fica em `/docs`).
+
+Na interface:
+
+1. Clique em **Abrir imagem** ou arraste um arquivo para a janela.
+2. Abra um ajuste no painel da direita (por exemplo, **Limiarização**) e mexa no controle. A pré-visualização aparece na hora.
+3. Clique em **Aplicar** para gravar a edição no histórico, ou em **Cancelar**.
+4. Use **Ver original** para comparar, o painel **Histórico** (ou Ctrl+Z / Ctrl+Shift+Z) para voltar ou refazer, e o menu **Arquivo** para salvar em BMP ou JPG.
+5. Roda do mouse dá zoom e arrastar move a imagem. Duplo clique ajusta à tela.
+
+O servidor guarda uma única imagem em edição, pensada para uso local por uma pessoa.
+
+Os algoritmos de `backend/model/` também funcionam sem a interface:
 
 ```python
-from model.image_io import load_image, save_image
-from model.thresholding import threshold_image
+from backend.model.image_io import load_image, save_image
+from backend.model.thresholding import threshold_image
 
 imagem = load_image("imagens/GatoHalloween.jpg")   # matriz 2D uint8 (H, W)
 binaria = threshold_image(imagem, 128)             # pixels >= 128 viram 255, os demais 0
@@ -152,32 +182,45 @@ Salve a imagem limiarizada em BMP. O JPG comprime com perdas e cria tons de cinz
 
 ## Testes
 
-Os testes são scripts. Rode-os a partir da raiz do projeto:
-
 ```bash
-python -m tests.test_io
-python -m tests.test_thresholding
+pip install -r requirements/requirements-dev.txt
+pytest
 ```
-
-`test_thresholding` grava os arquivos `saida_limiar_*.bmp` no diretório atual.
 
 ## Estrutura do projeto
 
-O projeto segue a separação MVC:
-
 ```
 catpixel/
-├── main.py              # ponto de entrada (ainda vazio)
-├── model/               # algoritmos de processamento
-│   ├── image_io.py      # abrir e salvar imagens
-│   └── thresholding.py  # limiarização
-├── view/                # interface gráfica (a implementar)
-├── controller/          # liga a interface aos algoritmos (a implementar)
-├── tests/               # scripts de teste
-├── imagens/             # imagens de exemplo e saídas de teste
-├── LogoJPG.jpg
-└── LogoPNG.png
+├── backend/                      # Python
+│   ├── app.py                    # rotas FastAPI e entrega do front-end
+│   ├── operations.py             # catálogo de operações que a interface pode pedir
+│   ├── session.py                # imagem aberta e histórico (desfazer/refazer)
+│   ├── model/                    # algoritmos, sem nada de web
+│   │   ├── image_io.py           # abrir, salvar e codificar imagens
+│   │   ├── sampling.py           # redução para a pré-visualização
+│   │   └── thresholding.py       # limiarização
+│   └── tests/
+├── frontend/                     # HTML, CSS e JavaScript puros
+│   ├── index.html
+│   ├── css/styles.css            # tema azul-escuro e verde
+│   └── js/
+│       ├── main.js               # liga tudo
+│       ├── api.js                # chamadas à API
+│       ├── stage-view.js         # área da imagem: zoom e arrastar
+│       ├── adjustments-panel.js  # painel de ajustes
+│       ├── history-panel.js
+│       ├── menubar.js
+│       └── toast.js
+├── requirements/
+├── imagens/                      # imagens de exemplo
+└── assets/                       # logos
 ```
+
+### Como adicionar um novo algoritmo
+
+1. Escreva a função em `backend/model/` e o teste em `backend/tests/`.
+2. Registre a operação em `backend/operations.py`.
+3. Adicione uma entrada em `ADJUSTMENTS`, em `frontend/js/adjustments-panel.js`, com os controles dela.
 
 ## Regras do projeto
 
@@ -195,8 +238,4 @@ catpixel/
 4. Envie a branch: `git push origin feature/minha-funcionalidade`
 5. Abra um Pull Request.
 
-Coloque novos algoritmos em `model/` e o teste correspondente em `tests/`.
-
-## Licença
-
-Ainda não definida. Antes de publicar o projeto como open source, adicione um arquivo `LICENSE`, por exemplo MIT.
+Coloque novos algoritmos em `backend/model/` e o teste correspondente em `backend/tests/`.
