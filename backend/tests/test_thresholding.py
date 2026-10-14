@@ -1,40 +1,35 @@
 import numpy as np
-from model.image_io import load_image, save_image
-from model.thresholding import threshold_image
+import pytest
 
-""" 
-Teste 1: matriz pequena, resultado previsível 
-"""
-
-test_matrix = np.array([[ 10, 127, 128],
-                        [200,   0, 255]], dtype=np.uint8)
-
-result = threshold_image(test_matrix, 128)
-
-expected = np.array([[  0,   0, 255],
-                     [255,   0, 255]], dtype=np.uint8)
-
-print("Resultado:")
-print(result)
-
-assert np.array_equal(result, expected), "A limiarização não deu o resultado esperado!"
-print("Teste 1 OK: matriz pequena confere.\n")
+from backend.model.thresholding import threshold_image
 
 
-"""
-Teste 2: imagem real
-"""
+def test_small_matrix_gives_the_expected_result():
+    matrix = np.array([[10, 127, 128],
+                       [200, 0, 255]], dtype=np.uint8)
+    expected = np.array([[0, 0, 255],
+                         [255, 0, 255]], dtype=np.uint8)
 
-image = load_image("imagens/GatoHalloween.jpg")   # <- troque pelo caminho da sua imagem
-print("Imagem carregada, formato (altura, largura):", image.shape)
+    assert np.array_equal(threshold_image(matrix, 128), expected)
 
-for threshold in (64, 128, 192):
-    binary_image = threshold_image(image, threshold)
 
-    # Só podem existir os valores 0 e 255 na saída
-    print(f"Limiar {threshold}: valores presentes ->", np.unique(binary_image))
+def test_output_only_has_black_and_white():
+    matrix = np.arange(256, dtype=np.uint8).reshape(16, 16)
+    assert set(np.unique(threshold_image(matrix, 100))) == {0, 255}
 
-    # Salva em BMP: o JPG comprime com perdas e criaria tons de cinza nas bordas
-    save_image(binary_image, f"saida_limiar_{threshold}.bmp")
 
-print("Parte 2 OK: abra os arquivos saida_limiar_*.bmp para ver o resultado.")
+def test_does_not_change_the_input():
+    matrix = np.array([[200]], dtype=np.uint8)
+    threshold_image(matrix, 255)
+    assert matrix[0, 0] == 200
+
+
+@pytest.mark.parametrize("limit", [-1, 256])
+def test_rejects_limit_out_of_range(limit):
+    with pytest.raises(ValueError):
+        threshold_image(np.zeros((2, 2), dtype=np.uint8), limit)
+
+
+def test_rejects_color_image():
+    with pytest.raises(ValueError):
+        threshold_image(np.zeros((2, 2, 3), dtype=np.uint8), 128)
