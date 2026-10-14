@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CatPixel</title>
+  <link rel="icon" href="/assets/logo-mask.png">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div id="app">
+    <header id="menubar">
+      <span class="logo logo-small" aria-label="CatPixel"></span>
+      <nav id="menus"></nav>
+      <span id="doc-title"></span>
+      <label class="switch" id="compare-switch" title="Mostra a imagem original enquanto estiver ligado">
+        <input type="checkbox" id="compare" disabled>
+        <span class="switch-track"></span>
+        <span>Ver original</span>
+      </label>
+    </header>
+
+    <aside id="toolbar" aria-label="Ferramentas">
+      <button class="tool" id="tool-zoom-in" title="Aproximar">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5M8 11h6M11 8v6"/></svg>
+      </button>
+      <button class="tool" id="tool-zoom-out" title="Afastar">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5M8 11h6"/></svg>
+      </button>
+      <button class="tool" id="tool-fit" title="Ajustar à tela (duplo clique na imagem)">
+        <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      </button>
+      <button class="tool tool-text" id="tool-actual" title="Tamanho real (100%)">1:1</button>
+    </aside>
+
+    <main id="stage">
+      <div id="canvas-wrap" hidden><img id="doc" alt="Imagem em edição" draggable="false"></div>
+
+      <section id="welcome">
+        <span class="logo logo-large" aria-label="CatPixel"></span>
+        <p class="welcome-title">Arraste uma imagem para cá</p>
+        <p class="welcome-hint">BMP, JPG ou PNG</p>
+        <button class="button primary" id="welcome-open">Abrir imagem</button>
+      </section>
+      <div id="drop-overlay" hidden>Solte para abrir</div>
+    </main>
+
+    <aside id="panels">
+      <section class="panel" id="panel-adjust">
+        <h2>Ajustes</h2>
+        <div class="panel-body" id="adjustments"></div>
+      </section>
+      <section class="panel" id="panel-history">
+        <h2>Histórico</h2>
+        <ol class="panel-body" id="history"></ol>
+      </section>
+    </aside>
+
+    <footer id="statusbar">
+      <span id="status-info">Nenhuma imagem aberta</span>
+      <span id="status-zoom"></span>
+    </footer>
+  </div>
+
+  <input type="file" id="file-input" accept=".bmp,.jpg,.jpeg,.png,image/*" hidden>
+  <div id="toast" role="status"></div>
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>
