@@ -211,12 +211,15 @@ catpixel/
 │       ├── history-panel.js
 │       ├── menubar.js
 │       └── toast.js
+├── docs/                         # como cada funcionalidade foi feita e como adicionar novas
 ├── requirements/
 ├── imagens/                      # imagens de exemplo
 └── assets/                       # logos
 ```
 
 ### Como adicionar um novo algoritmo
+
+O passo a passo completo está em [docs/novas-funcionalidades.md](docs/novas-funcionalidades.md), e a explicação de cada funcionalidade (o quê, por quê e como) em [docs/implementacoes.md](docs/implementacoes.md). Resumo:
 
 1. Escreva a função em `backend/model/` e o teste em `backend/tests/`.
 2. Registre a operação em `backend/operations.py`.
