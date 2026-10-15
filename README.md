@@ -180,13 +180,6 @@ save_image(binaria, "saida.bmp")
 
 Salve a imagem limiarizada em BMP. O JPG comprime com perdas e cria tons de cinza nas bordas.
 
-## Testes
-
-```bash
-pip install -r requirements/requirements-dev.txt
-pytest
-```
-
 ## Estrutura do projeto
 
 ```
@@ -232,13 +225,3 @@ O passo a passo completo está em [docs/novas-funcionalidades.md](docs/novas-fun
 - Bibliotecas de álgebra linear (como o NumPy) são permitidas, mas não suas funções que sejam, elas próprias, requisito do trabalho.
 - Se a DFT for implementada de forma ingênua, o programa também deve oferecer uma FFT de biblioteca, para que imagens grandes sejam viáveis.
 - Ao exibir o resultado de filtros que geram valores negativos ou acima de 255, normalize os valores apenas para exibição.
-
-## Contribuindo
-
-1. Faça um fork do repositório.
-2. Crie uma branch: `git checkout -b feature/minha-funcionalidade`
-3. Faça o commit: `git commit -m "Adiciona minha funcionalidade"`
-4. Envie a branch: `git push origin feature/minha-funcionalidade`
-5. Abra um Pull Request.
-
-Coloque novos algoritmos em `backend/model/` e o teste correspondente em `backend/tests/`.
