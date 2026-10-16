@@ -1,11 +1,18 @@
 /**
  * Painel de ajustes. Cada ajuste é uma entrada em ADJUSTMENTS ligada a uma operação do backend.
  * Para ter um novo ajuste: registrar a operação em backend/operations.py e listar aqui.
+ * `group` é a chave de GROUPS: cada grupo vira uma seção recolhível no painel.
  */
+
+const GROUPS = {
+  tones: "Tons e contraste",
+  hide: "Esconder dados",
+};
 
 const ADJUSTMENTS = [
   {
     op: "threshold",
+    group: "tones",
     title: "Limiarização",
     hint: "Pixels com intensidade a partir do limiar ficam brancos; os demais, pretos.",
     controls: [{ key: "limit", label: "Limiar", min: 0, max: 255, step: 1, value: 128 }],
@@ -13,6 +20,7 @@ const ADJUSTMENTS = [
 
   {
     op: "negative",
+    group: "tones",
     title: "Negativo",
     hint: "Inverte as intensidades da imagem.",
     controls: [],
@@ -20,6 +28,7 @@ const ADJUSTMENTS = [
 
   {
     op: "brightness",
+    group: "tones",
     title: "Brilho",
     hint: "Multiplica as intensidades por um fator.",
     controls: [
@@ -36,6 +45,7 @@ const ADJUSTMENTS = [
 
   {
     op: "gamma",
+    group: "tones",
     title: "Potência (Gama)",
     hint: "Ajusta as intensidades por uma função de potência.",
     controls: [
@@ -52,6 +62,7 @@ const ADJUSTMENTS = [
   
   {
     op: "log",
+    group: "tones",
     title: "Logaritmo",
     hint: "Expande os níveis escuros e comprime os claros.",
     controls: [],
@@ -59,6 +70,7 @@ const ADJUSTMENTS = [
 
   {
     op: "piecewise",
+    group: "tones",
     title: "Linear por partes",
     hint: "Liga (0,0), (r1,s1), (r2,s2) e (255,255) com retas. Cada ponto diz: o tom r vira o tom s.",
     controls: [
@@ -71,6 +83,7 @@ const ADJUSTMENTS = [
 
   {
     op: "hide_message",
+    group: "hide",
     title: "Esteganografia",
     hint: "Esconde um texto nos pixels, sem mudar a aparência. Salve em BMP: o JPG apaga a mensagem, e qualquer ajuste feito depois também.",
     preview: false, // a prévia é reduzida e perderia a mensagem
@@ -93,7 +106,11 @@ export class AdjustmentsPanel {
   constructor(container, callbacks) {
     this.#container = container;
     this.#callbacks = callbacks;
-    ADJUSTMENTS.forEach((adjustment) => this.#cards.push(this.#buildCard(adjustment)));
+    for (const [key, title] of Object.entries(GROUPS)) {
+      const body = this.#buildGroup(title);
+      ADJUSTMENTS.filter((adjustment) => adjustment.group === key)
+        .forEach((adjustment) => this.#cards.push(this.#buildCard(adjustment, body)));
+    }
 
     const note = document.createElement("p");
     note.className = "coming-soon";
@@ -111,7 +128,31 @@ export class AdjustmentsPanel {
     this.#closeActive();
   }
 
-  #buildCard(adjustment) {
+  /** Seção recolhível que reúne ajustes parecidos. Devolve o elemento onde os cartões entram. */
+  #buildGroup(title) {
+    const section = document.createElement("section");
+    section.className = "adjust-group open";
+
+    const header = Object.assign(document.createElement("button"), {
+      className: "adjust-group-header", textContent: title,
+    });
+    const body = document.createElement("div");
+    body.className = "adjust-group-body";
+
+    header.addEventListener("click", () => {
+      const collapsing = section.classList.contains("open");
+      // Recolher um grupo descarta a prévia do cartão aberto dentro dele.
+      if (collapsing && body.contains(this.#active?.card)) this.#closeActive(true);
+      section.classList.toggle("open", !collapsing);
+      body.hidden = collapsing;
+    });
+
+    section.append(header, body);
+    this.#container.append(section);
+    return body;
+  }
+
+  #buildCard(adjustment, parent) {
     const card = document.createElement("section");
     card.className = "adjust-card";
 
@@ -151,7 +192,7 @@ export class AdjustmentsPanel {
     });
 
     card.append(header, body);
-    this.#container.append(card);
+    parent.append(card);
     return entry;
   }
 

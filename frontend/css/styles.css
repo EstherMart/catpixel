@@ -185,6 +185,15 @@ button:disabled { cursor: default; }
 }
 .panel-body { flex: 1; overflow-y: auto; margin: 0; padding: 10px; }
 
+.adjust-group { margin-bottom: 10px; }
+.adjust-group-header {
+  display: flex; justify-content: space-between; align-items: center; width: 100%;
+  padding: 6px 4px; background: none; border: 0; border-bottom: 1px solid var(--line);
+  margin-bottom: 8px; color: var(--muted); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; text-align: left;
+}
+.adjust-group-header::after { content: "›"; font-size: 16px; transition: transform 0.15s; }
+.adjust-group.open .adjust-group-header::after { transform: rotate(90deg); }
 .adjust-card { margin-bottom: 8px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius); }
 .adjust-card.open { border-color: var(--green); }
 .adjust-header {
