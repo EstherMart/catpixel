@@ -95,6 +95,13 @@ const adjustments = new AdjustmentsPanel($("adjustments"), {
   preview: previewAdjustment,
   apply: (op, params) => update(() => api.apply(op, params)),
   cancel: cancelPreview,
+  reveal: async () => {
+    try {
+      return await api.revealMessage();
+    } catch (error) {
+      showError(error);
+    }
+  },
 });
 
 // ---------- arquivos ----------

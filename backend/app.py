@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from backend.model.image_io import encode_image, load_image
 from backend.model.sampling import downscale_for_preview
+from backend.model.steganography import reveal_message
 from backend.operations import run_operation
 from backend.session import EditorSession
 
@@ -75,6 +76,13 @@ def create_app(session: EditorSession | None = None) -> FastAPI:
         label, result = run(request, session.current)
         session.commit(label, result)
         return session.state()
+
+    @app.get("/api/steganography")
+    def reveal():
+        """Lê a mensagem escondida na imagem inteira (nunca na prévia reduzida)."""
+        require_image()
+        text = reveal_message(session.current)
+        return {"found": text is not None, "text": text or ""}
 
     @app.post("/api/undo")
     def undo():

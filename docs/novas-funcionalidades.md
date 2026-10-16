@@ -21,7 +21,7 @@ Cada funcionalidade passa por duas partes: o **backend** faz a conta, e o **fron
    ```
 
    - `label` é o texto que aparece no histórico.
-   - `run` recebe a matriz e os parâmetros (`params`) vindos do navegador. Valide o tipo de cada parâmetro (veja `_int_param`). Para parâmetros decimais, crie um auxiliar parecido que aceite `int` e `float`, porque o navegador pode mandar `1` no lugar de `1.0`.
+   - `run` recebe a matriz e os parâmetros (`params`) vindos do navegador. Valide o tipo de cada parâmetro (veja `_int_param`). Para parâmetros decimais, use `_number_param`, que aceita `int` e `float` (o navegador pode mandar `1` no lugar de `1.0`). Para texto, use `_text_param`. Todo erro de parâmetro deve ser `ValueError`: a API só trata esse tipo (e `KeyError`), e qualquer outro vira erro 500.
 
 ## 2. Frontend (JavaScript)
 
@@ -57,7 +57,7 @@ controls: [{ key: "limit", label: "Limiar", min: 0, max: 255, step: 1, value: 12
 uvicorn backend.app:app --reload --port 8765
 ```
 
-Abra `http://localhost:8765`, abra uma imagem e experimente o novo cartão.
+Abra `http://localhost:8765`, abra uma imagem e experimente o novo cartão. Rode também `python -m pytest`.
 
 ## Quando é preciso mais que isso
 
@@ -69,6 +69,6 @@ O caminho acima serve para operações que mudam a imagem a partir de números. 
 | Filtro por convolução com tamanho e valores escolhidos | Precisa de um controle novo no frontend (tamanho do filtro e grade de valores). O backend recebe a matriz do filtro em `params`. |
 | Chroma-key | Precisa enviar uma segunda imagem (a que substitui o fundo). Crie um endpoint de upload e um controle de arquivo. |
 | Espectro de Fourier editável | Precisa de um editor de desenho (pincel) no frontend e de endpoints que guardem o espectro e apliquem a inversa. |
-| Esteganografia | Esconder e ler uma mensagem pede entrada de texto e, na leitura, mostrar texto em vez de imagem. |
+| Esteganografia (já feita, serve de modelo) | Esconder é uma operação comum. Ler devolve texto, então tem o endpoint próprio `GET /api/steganography`. No frontend, use um controle com `type: "text"` e `reveal: true` em `ADJUSTMENTS`, e `preview: false` quando a prévia reduzida não faz sentido. |
 | Imagens coloridas | Hoje a matriz é 2D (cinza). As operações precisam aceitar matrizes `(altura, largura, 3)`, e `load_image` e `encode_image` precisam manter as cores. |
 | Resultados fora de 0 a 255 (filtros, Sobel) | Normalize os valores só para exibir, como o enunciado pede. Guarde o resultado real no histórico. |

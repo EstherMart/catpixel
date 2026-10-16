@@ -41,6 +41,12 @@ export const api = {
     return (await postJson("/api/preview", { op, params }, signal)).blob();
   },
 
+  /** Texto escondido na imagem atual, ou null se não houver. */
+  async revealMessage() {
+    const { found, text } = await (await request("/api/steganography")).json();
+    return found ? text : null;
+  },
+
   async undo() { return (await postJson("/api/undo")).json(); },
   async redo() { return (await postJson("/api/redo")).json(); },
   async reset() { return (await postJson("/api/reset")).json(); },

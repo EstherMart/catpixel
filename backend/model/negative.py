@@ -1,3 +1,4 @@
+"""Negativo da imagem."""
 import numpy as np
 
 def negative_image(matrix: np.ndarray) -> np.ndarray:

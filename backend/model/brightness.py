@@ -1,3 +1,4 @@
+"""Brilho: multiplica as intensidades por um fator, com saturação em 0 e 255."""
 import math
 import numpy as np
 

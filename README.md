@@ -9,7 +9,7 @@
   Todos os algoritmos são implementados do zero, manipulando diretamente a matriz da imagem.
 </p>
 
-> **Status:** em desenvolvimento. A leitura/gravação de imagens, a limiarização e a interface web (menus, zoom, histórico, desfazer/refazer) estão prontas. Os demais algoritmos ainda não foram implementados (veja o [Roadmap](#roadmap)).
+> **Status:** em desenvolvimento. A leitura/gravação de imagens, as operações pontuais (limiarização, negativo, brilho, gama, logaritmo, linear por partes), a esteganografia e a interface web (menus, zoom, histórico, desfazer/refazer) estão prontas. Os demais algoritmos ainda não foram implementados (veja o [Roadmap](#roadmap)).
 
 ## Sumário
 
@@ -59,11 +59,11 @@ Legenda: ✅ pronto · 🚧 em andamento · ⬜ pendente
 | Funcionalidade                                                                      | Status |
 | ----------------------------------------------------------------------------------- | ------ |
 | Limiarização                                                                        | ✅     |
-| Negativo                                                                            | ⬜     |
-| Brilho                                                                              | ⬜     |
-| Potência (correção de gama)                                                         | ⬜     |
-| Linear definida por partes                                                          | ⬜     |
-| Esteganografia                                                                      | ⬜     |
+| Negativo                                                                            | ✅     |
+| Brilho                                                                              | ✅     |
+| Potência (correção de gama) e logaritmo                                             | ✅     |
+| Linear definida por partes                                                          | ✅     |
+| Esteganografia                                                                      | ✅     |
 | Exibição do histograma                                                              | ⬜     |
 | Equalização de histograma                                                           | ⬜     |
 | Filtro genérico por convolução (3x3 até, no mínimo, 9x9, mesmo tamanho da original) | ⬜     |
@@ -117,11 +117,11 @@ Legenda: ✅ pronto · 🚧 em andamento · ⬜ pendente
 
 1. ✅ Entrada e saída de imagens
 2. ✅ Limiarização
-3. ⬜ Demais operações pontuais (negativo, brilho, gama, linear por partes)
+3. ✅ Demais operações pontuais (negativo, brilho, gama, linear por partes)
 4. ⬜ Histograma e equalização
 5. ⬜ Convolução genérica e filtros espaciais
 6. ⬜ Escala e rotação com interpolação
-7. ⬜ Esteganografia
+7. ✅ Esteganografia
 8. ⬜ Fourier e edição do espectro
 9. ⬜ Imagens coloridas (HSI, chroma-key, sépia etc.)
 10. 🚧 Interface gráfica integrando tudo (base pronta; cada algoritmo novo ganha um painel)
@@ -178,7 +178,7 @@ binaria = threshold_image(imagem, 128)             # pixels >= 128 viram 255, os
 save_image(binaria, "saida.bmp")
 ```
 
-Salve a imagem limiarizada em BMP. O JPG comprime com perdas e cria tons de cinza nas bordas.
+Salve o resultado em BMP. O JPG comprime com perdas e cria tons de cinza nas bordas.
 
 ## Estrutura do projeto
 
@@ -191,7 +191,13 @@ catpixel/
 │   ├── model/                    # algoritmos, sem nada de web
 │   │   ├── image_io.py           # abrir, salvar e codificar imagens
 │   │   ├── sampling.py           # redução para a pré-visualização
-│   │   └── thresholding.py       # limiarização
+│   │   ├── thresholding.py       # limiarização
+│   │   ├── negative.py           # negativo
+│   │   ├── brightness.py         # brilho
+│   │   ├── gamma_log.py          # potência (gama) e logaritmo
+│   │   ├── piecewise_linear.py   # linear definida por partes
+│   │   ├── steganography.py      # esconder e revelar texto (LSB)
+│   │   └── utils/lut.py          # aplica uma tabela de 256 tons à imagem
 │   └── tests/
 ├── frontend/                     # HTML, CSS e JavaScript puros
 │   ├── index.html

@@ -95,3 +95,63 @@ def test_save_downloads_bmp_and_jpg(client):
     assert jpg.content.startswith(b"\xff\xd8")
 
     assert client.get("/api/save", params={"format": "gif"}).status_code == 400
+
+
+def photo_bytes(size=(60, 60)) -> bytes:
+    noise = np.random.default_rng(2).integers(0, 256, size=size[::-1], dtype=np.uint8)
+    buffer = io.BytesIO()
+    Image.fromarray(noise).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+@pytest.mark.parametrize("op, params, label", [
+    ("negative", {}, "Negativo"),
+    ("brightness", {"factor": 1.5}, "Brilho (x1.5)"),
+    ("gamma", {"gamma": 0.5}, "Gama (0.5)"),
+    ("log", {}, "Logaritmo"),
+    ("piecewise", {"r1": 50, "s1": 10, "r2": 200, "s2": 240}, "Linear por partes (50,10) (200,240)"),
+])
+def test_point_operations_are_applied_and_recorded(client, op, params, label):
+    open_sample(client)
+    state = client.post("/api/apply", json={"op": op, "params": params}).json()
+    assert state["history"][-1] == label
+
+
+def test_decimal_parameters_accept_integers_and_reject_text(client):
+    open_sample(client)
+    assert client.post("/api/apply", json={"op": "brightness", "params": {"factor": 1}}).status_code == 200
+    assert client.post("/api/apply", json={"op": "brightness", "params": {"factor": "2"}}).status_code == 422
+    assert client.post("/api/apply", json={"op": "gamma", "params": {"gamma": 0}}).status_code == 422
+    assert client.post("/api/apply", json={"op": "piecewise", "params": {"r1": 1}}).status_code == 422
+
+
+def test_steganography_hide_and_reveal_through_the_api(client):
+    client.post("/api/open", files={"file": ("foto.png", photo_bytes(), "image/png")})
+    assert client.get("/api/steganography").json() == {"found": False, "text": ""}
+
+    state = client.post("/api/apply", json={"op": "hide_message", "params": {"text": "Olá!"}}).json()
+    assert "Olá" not in " ".join(state["history"])  # o segredo não aparece no histórico
+    assert client.get("/api/steganography").json() == {"found": True, "text": "Olá!"}
+
+
+def test_steganography_survives_saving_as_bmp_but_not_as_jpg(client):
+    client.post("/api/open", files={"file": ("foto.png", photo_bytes(), "image/png")})
+    client.post("/api/apply", json={"op": "hide_message", "params": {"text": "segredo"}})
+
+    for fmt, expected in (("bmp", True), ("jpg", False)):
+        saved = client.get("/api/save", params={"format": fmt}).content
+        client.post("/api/open", files={"file": (f"s.{fmt}", saved, "application/octet-stream")})
+        assert client.get("/api/steganography").json()["found"] is expected
+        client.post("/api/open", files={"file": ("foto.png", photo_bytes(), "image/png")})
+        client.post("/api/apply", json={"op": "hide_message", "params": {"text": "segredo"}})
+
+
+def test_steganography_rejects_empty_text_and_messages_that_do_not_fit(client):
+    open_sample(client)  # 8x6: não cabe nem o cabeçalho
+    assert client.post("/api/apply", json={"op": "hide_message", "params": {"text": "oi"}}).status_code == 422
+    assert client.post("/api/apply", json={"op": "hide_message", "params": {"text": ""}}).status_code == 422
+    assert client.post("/api/apply", json={"op": "hide_message", "params": {"text": 5}}).status_code == 422
+
+
+def test_steganography_without_image_is_rejected(client):
+    assert client.get("/api/steganography").status_code == 409

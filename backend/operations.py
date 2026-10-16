@@ -2,13 +2,16 @@
 from dataclasses import dataclass
 from typing import Any, Callable
 
-import numpy as np
 import math
 
-from backend.model.thresholding import threshold_image
+import numpy as np
+
 from backend.model.brightness import adjust_brightness
 from backend.model.gamma_log import gamma_correction, log_transformation
 from backend.model.negative import negative_image
+from backend.model.piecewise_linear import piecewise_linear
+from backend.model.steganography import hide_message
+from backend.model.thresholding import threshold_image
 
 Params = dict[str, Any]
 
@@ -25,6 +28,7 @@ def _int_param(params: Params, name: str) -> int:
         raise ValueError(f"O parâmetro '{name}' deve ser um número inteiro.")
     return value
 
+
 def _number_param(params: Params, name: str) -> float:
     value = params.get(name)
 
@@ -38,6 +42,13 @@ def _number_param(params: Params, name: str) -> float:
         )
 
     return float(value)
+
+
+def _text_param(params: Params, name: str) -> str:
+    value = params.get(name)
+    if not isinstance(value, str):
+        raise ValueError(f"O parâmetro '{name}' deve ser um texto.")
+    return value
 
 
 OPERATIONS: dict[str, Operation] = {
@@ -69,7 +80,24 @@ OPERATIONS: dict[str, Operation] = {
         label=lambda params: "Logaritmo",
         run=lambda matrix, params: log_transformation(matrix),
     ),
-        
+
+    "piecewise": Operation(
+        label=lambda params: (
+            f"Linear por partes ({params['r1']},{params['s1']}) ({params['r2']},{params['s2']})"
+        ),
+        run=lambda matrix, params: piecewise_linear(
+            matrix,
+            _number_param(params, "r1"),
+            _number_param(params, "s1"),
+            _number_param(params, "r2"),
+            _number_param(params, "s2"),
+        ),
+    ),
+
+    "hide_message": Operation(
+        label=lambda params: "Esteganografia (mensagem escondida)",  # o texto secreto não vai para o histórico
+        run=lambda matrix, params: hide_message(matrix, _text_param(params, "text")),
+    ),
 }
 
 def run_operation(name: str, matrix: np.ndarray, params: Params) -> tuple[str, np.ndarray]:
@@ -79,5 +107,3 @@ def run_operation(name: str, matrix: np.ndarray, params: Params) -> tuple[str, n
     operation = OPERATIONS[name]
     result = operation.run(matrix, params)  # valida os parâmetros antes de montar o rótulo
     return operation.label(params), result
-
-

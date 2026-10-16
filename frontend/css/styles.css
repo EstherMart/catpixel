@@ -201,6 +201,17 @@ button:disabled { cursor: default; }
   min-width: 44px; padding: 2px 8px; text-align: center; font-weight: 700;
   background: var(--green-soft); color: var(--green); border-radius: 6px;
 }
+.adjust-text-label { display: block; margin-bottom: 6px; color: var(--muted); }
+.adjust-text {
+  width: 100%; margin-bottom: 12px; padding: 8px; resize: vertical; font: inherit;
+  color: var(--text); background: var(--bg-1); border: 1px solid var(--line); border-radius: 6px;
+}
+.reveal-button { width: 100%; margin-top: 10px; }
+.reveal-result {
+  margin: 8px 0 0; padding: 8px; white-space: pre-wrap; word-break: break-word;
+  background: var(--green-soft); border-radius: 6px;
+}
+.reveal-result.empty { color: var(--muted); background: var(--bg-1); }
 .adjust-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
 input[type="range"] {

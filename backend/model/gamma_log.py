@@ -1,3 +1,4 @@
+"""Transformação de potência (correção de gama) e transformação logarítmica, ambas por LUT."""
 import math
 
 from backend.model.utils.lut import apply_lut
