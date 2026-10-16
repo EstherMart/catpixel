@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from PIL import UnidentifiedImageError
 from pydantic import BaseModel, Field
 
+from backend.model.histogram import compute_histogram
 from backend.model.image_io import encode_image, load_image
 from backend.model.sampling import downscale_for_preview
 from backend.model.steganography import reveal_message
@@ -76,6 +77,12 @@ def create_app(session: EditorSession | None = None) -> FastAPI:
         label, result = run(request, session.current)
         session.commit(label, result)
         return session.state()
+
+    @app.get("/api/histogram")
+    def histogram(which: str = "current"):
+        require_image()
+        matrix = session.original if which == "original" else session.current
+        return {"counts": compute_histogram(matrix)}
 
     @app.get("/api/steganography")
     def reveal():

@@ -155,3 +155,50 @@ def test_steganography_rejects_empty_text_and_messages_that_do_not_fit(client):
 
 def test_steganography_without_image_is_rejected(client):
     assert client.get("/api/steganography").status_code == 409
+
+
+def test_histogram_endpoint_counts_every_pixel(client):
+    open_sample(client)  # 8x6, todo em 200
+    counts = client.get("/api/histogram").json()["counts"]
+    assert len(counts) == 256 and counts[200] == 48 and sum(counts) == 48
+    assert client.get("/api/histogram", params={"which": "original"}).status_code == 200
+
+
+def test_histogram_follows_the_current_image(client):
+    open_sample(client)
+    client.post("/api/apply", json={"op": "negative", "params": {}})
+    assert client.get("/api/histogram").json()["counts"][55] == 48
+    assert client.get("/api/histogram", params={"which": "original"}).json()["counts"][200] == 48
+
+
+def test_histogram_without_image_is_rejected(client):
+    assert client.get("/api/histogram").status_code == 409
+
+
+def test_equalize_is_applied_and_recorded(client):
+    client.post("/api/open", files={"file": ("foto.png", photo_bytes(), "image/png")})
+    state = client.post("/api/apply", json={"op": "equalize", "params": {}}).json()
+    assert state["history"][-1] == "Equalização de histograma"
+
+
+def test_convolution_is_applied_and_keeps_the_size(client):
+    open_sample(client)
+    kernel = [[1] * 5 for _ in range(5)]
+    state = client.post(
+        "/api/apply", json={"op": "convolution", "params": {"kernel": kernel, "divisor": 25, "normalize": 0}}
+    ).json()
+    assert state["history"][-1] == "Convolução 5x5"
+    assert (state["width"], state["height"]) == (8, 6)
+
+
+def test_convolution_rejects_bad_parameters(client):
+    open_sample(client)
+    ok = [[0, 0, 0], [0, 1, 0], [0, 0, 0]]
+    for params in (
+        {"kernel": [[1, 1], [1, 1]], "divisor": 1, "normalize": 0},
+        {"kernel": "x", "divisor": 1, "normalize": 0},
+        {"kernel": ok, "divisor": 0, "normalize": 0},
+        {"kernel": ok, "normalize": 0},
+        {"divisor": 1, "normalize": 0},
+    ):
+        assert client.post("/api/apply", json={"op": "convolution", "params": params}).status_code == 422

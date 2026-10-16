@@ -9,7 +9,7 @@
   Todos os algoritmos são implementados do zero, manipulando diretamente a matriz da imagem.
 </p>
 
-> **Status:** em desenvolvimento. A leitura/gravação de imagens, as operações pontuais (limiarização, negativo, brilho, gama, logaritmo, linear por partes), a esteganografia e a interface web (menus, zoom, histórico, desfazer/refazer) estão prontas. Os demais algoritmos ainda não foram implementados (veja o [Roadmap](#roadmap)).
+> **Status:** em desenvolvimento. A leitura/gravação de imagens, as operações pontuais (limiarização, negativo, brilho, gama, logaritmo, linear por partes), o histograma e a equalização, a convolução genérica, a esteganografia e a interface web (menus, zoom, histórico, desfazer/refazer) estão prontas. Os demais algoritmos ainda não foram implementados (veja o [Roadmap](#roadmap)).
 
 ## Sumário
 
@@ -64,9 +64,9 @@ Legenda: ✅ pronto · 🚧 em andamento · ⬜ pendente
 | Potência (correção de gama) e logaritmo                                             | ✅     |
 | Linear definida por partes                                                          | ✅     |
 | Esteganografia                                                                      | ✅     |
-| Exibição do histograma                                                              | ⬜     |
-| Equalização de histograma                                                           | ⬜     |
-| Filtro genérico por convolução (3x3 até, no mínimo, 9x9, mesmo tamanho da original) | ⬜     |
+| Exibição do histograma                                                              | ✅     |
+| Equalização de histograma                                                           | ✅     |
+| Filtro genérico por convolução (3x3 até, no mínimo, 9x9, mesmo tamanho da original) | ✅     |
 
 ### Filtros espaciais
 
@@ -118,8 +118,8 @@ Legenda: ✅ pronto · 🚧 em andamento · ⬜ pendente
 1. ✅ Entrada e saída de imagens
 2. ✅ Limiarização
 3. ✅ Demais operações pontuais (negativo, brilho, gama, linear por partes)
-4. ⬜ Histograma e equalização
-5. ⬜ Convolução genérica e filtros espaciais
+4. ✅ Histograma e equalização
+5. 🚧 Convolução genérica (pronta) e filtros espaciais
 6. ⬜ Escala e rotação com interpolação
 7. ✅ Esteganografia
 8. ⬜ Fourier e edição do espectro
@@ -196,6 +196,8 @@ catpixel/
 │   │   ├── brightness.py         # brilho
 │   │   ├── gamma_log.py          # potência (gama) e logaritmo
 │   │   ├── piecewise_linear.py   # linear definida por partes
+│   │   ├── histogram.py          # histograma e equalização
+│   │   ├── convolution.py        # convolução com filtro quadrado ímpar
 │   │   ├── steganography.py      # esconder e revelar texto (LSB)
 │   │   └── utils/lut.py          # aplica uma tabela de 256 tons à imagem
 │   └── tests/
@@ -207,6 +209,8 @@ catpixel/
 │       ├── api.js                # chamadas à API
 │       ├── stage-view.js         # área da imagem: zoom e arrastar
 │       ├── adjustments-panel.js  # painel de ajustes
+│       ├── controls.js           # controles dos cartões (slider, texto, lista, grade do filtro)
+│       ├── histogram-panel.js    # gráfico do histograma
 │       ├── history-panel.js
 │       ├── menubar.js
 │       └── toast.js

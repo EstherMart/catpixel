@@ -41,6 +41,11 @@ export const api = {
     return (await postJson("/api/preview", { op, params }, signal)).blob();
   },
 
+  /** Contagem de pixels por intensidade (256 valores) da imagem atual ou da original. */
+  async histogram(which = "current") {
+    return (await (await request(`/api/histogram?which=${which}`)).json()).counts;
+  },
+
   /** Texto escondido na imagem atual, ou null se não houver. */
   async revealMessage() {
     const { found, text } = await (await request("/api/steganography")).json();

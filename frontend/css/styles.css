@@ -177,6 +177,7 @@ button:disabled { cursor: default; }
   background: var(--bg-1); border-left: 1px solid var(--line);
 }
 .panel { display: flex; flex-direction: column; min-height: 0; border-bottom: 1px solid var(--line); }
+#panel-histogram { flex: 0 0 auto; }
 #panel-adjust { flex: 1 1 60%; }
 #panel-history { flex: 1 1 40%; border-bottom: 0; }
 .panel h2 {
@@ -273,3 +274,25 @@ input[type="range"]:focus-visible { outline: 2px solid var(--green); outline-off
 @media (max-width: 900px) {
   :root { --panels-w: 260px; }
 }
+
+/* ---------- histograma ---------- */
+#histogram { flex: none; overflow: visible; padding: 10px 12px; }
+.histogram-canvas { display: block; width: 100%; height: 140px; background: var(--bg-2); border-radius: 6px; }
+.histogram-axis { display: flex; justify-content: space-between; margin-top: 4px; color: var(--muted); font-size: 11px; }
+.histogram-scale { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--muted); font-size: 12px; cursor: pointer; }
+.histogram-note { margin: 0; color: var(--muted); text-align: center; }
+
+/* ---------- controles de lista e do filtro ---------- */
+.adjust-select, .kernel-divisor {
+  flex: 1; min-width: 0; padding: 5px 8px; color: var(--text);
+  background: var(--bg-1); border: 1px solid var(--line); border-radius: 6px; font: inherit;
+}
+.adjust-row .kernel-divisor { flex: 0 0 90px; }
+.kernel-grid { display: grid; grid-template-columns: repeat(var(--n, 3), 1fr); gap: 3px; margin-bottom: 12px; }
+.kernel-cell {
+  width: 100%; min-width: 0; padding: 4px 2px; text-align: center; font: inherit; font-size: 12px;
+  color: var(--text); background: var(--bg-1); border: 1px solid var(--line); border-radius: 4px;
+  appearance: textfield; -moz-appearance: textfield;
+}
+.kernel-cell::-webkit-outer-spin-button, .kernel-cell::-webkit-inner-spin-button { appearance: none; margin: 0; }
+.kernel-cell:focus, .adjust-select:focus, .kernel-divisor:focus { outline: 1px solid var(--green); }

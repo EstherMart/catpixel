@@ -7,7 +7,9 @@ import math
 import numpy as np
 
 from backend.model.brightness import adjust_brightness
+from backend.model.convolution import convolve
 from backend.model.gamma_log import gamma_correction, log_transformation
+from backend.model.histogram import equalize_histogram
 from backend.model.negative import negative_image
 from backend.model.piecewise_linear import piecewise_linear
 from backend.model.steganography import hide_message
@@ -51,6 +53,13 @@ def _text_param(params: Params, name: str) -> str:
     return value
 
 
+def _kernel_param(params: Params, name: str) -> list[list[float]]:
+    value = params.get(name)
+    if not isinstance(value, list) or not all(isinstance(row, list) for row in value):
+        raise ValueError(f"O parâmetro '{name}' deve ser uma matriz (lista de listas) de números.")
+    return value
+
+
 OPERATIONS: dict[str, Operation] = {
     "threshold": Operation(
         label=lambda params: f"Limiarização ({params['limit']})",
@@ -91,6 +100,21 @@ OPERATIONS: dict[str, Operation] = {
             _number_param(params, "s1"),
             _number_param(params, "r2"),
             _number_param(params, "s2"),
+        ),
+    ),
+
+    "equalize": Operation(
+        label=lambda params: "Equalização de histograma",
+        run=lambda matrix, params: equalize_histogram(matrix),
+    ),
+
+    "convolution": Operation(
+        label=lambda params: f"Convolução {len(params['kernel'])}x{len(params['kernel'])}",
+        run=lambda matrix, params: convolve(
+            matrix,
+            _kernel_param(params, "kernel"),
+            _number_param(params, "divisor"),
+            bool(_number_param(params, "normalize")),
         ),
     ),
 

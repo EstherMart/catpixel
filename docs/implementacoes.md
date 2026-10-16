@@ -94,27 +94,39 @@ Esconder é uma operação comum (`"hide_message"`, com o parâmetro de texto `t
 
 ### Exibição do histograma
 
-> ⬜ Ainda não implementado.
+**O quê.** Mostra, num gráfico de barras, quantos pixels existem em cada intensidade, de 0 (preto) a 255 (branco). O gráfico fica no topo do painel lateral e se atualiza a cada edição, desfazer ou salto no histórico. Com **Ver original** ligado, mostra o histograma da imagem original.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** O histograma explica o efeito das outras operações: o brilho desloca as barras, o contraste as espalha e a equalização as distribui. Mostrá-lo o tempo todo permite comparar antes e depois sem abrir nada.
+
+**Como.** `compute_histogram(matrix)`, em `backend/model/histogram.py`, percorre cada pixel e soma 1 na posição da intensidade, devolvendo 256 contagens. O endpoint `GET /api/histogram?which=current|original` devolve `{"counts": [...]}`. No frontend, `frontend/js/histogram-panel.js` desenha as barras num `canvas`, com a altura proporcional ao maior valor (cada barra tem pelo menos 2 px, para aparecer em imagens com poucos tons). A caixa **Escala logarítmica** troca a altura por `ln(1 + contagem)`, o que deixa visíveis tons raros ao lado de tons muito frequentes, como o branco numa imagem quase toda preta. `main.js` chama `refreshHistogram()` sempre que a tela é redesenhada. O histograma é da imagem gravada no servidor: durante a pré-visualização de um ajuste ele ainda mostra a imagem atual, e só muda depois de **Aplicar**.
 
 ### Equalização de histograma
 
-> ⬜ Ainda não implementado.
+**O quê.** Redistribui as intensidades para que o histograma fique o mais uniforme possível, o que aumenta o contraste de imagens com poucos tons. A regra é `s = round((cdf(r) − cdf_min) / (N − cdf_min) · 255)`, em que `cdf` é a soma acumulada do histograma, `cdf_min` é o primeiro valor não nulo dela e `N` é o número de pixels.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** Subtrair `cdf_min` faz o menor tom da imagem virar 0 e o maior virar 255, aproveitando todo o intervalo. Uma imagem de um único tom não tem o que equalizar e volta igual, o que também evita divisão por zero.
+
+**Como.** `build_equalization_lut(counts)` e `equalize_histogram(matrix)`, em `backend/model/histogram.py`, calculam a tabela a partir do histograma e a aplicam com `apply_lut`, como nas outras operações pontuais. A operação `"equalize"` não tem parâmetros, e o cartão **Equalização de histograma** fica no grupo **Tons e contraste**. Para ver o efeito, aplique e compare o gráfico do histograma com **Ver original**.
 
 ### Filtro genérico por convolução
 
-> ⬜ Ainda não implementado.
+**O quê.** Cada pixel vira a soma dos seus vizinhos multiplicados pelos valores de um filtro quadrado de dimensão ímpar (3x3, 5x5, 7x7, 9x9 ou 11x11), dividida por um divisor. A imagem de saída tem o mesmo tamanho da original. A pessoa escolhe o tamanho, edita os valores da grade ou parte de um modelo pronto (média, gaussiana, identidade, realce de nitidez e bordas pelo Laplaciano).
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** Quase todos os filtros espaciais do trabalho (média, gaussiana, Laplaciano, high-boost, Sobel) são casos particulares dessa operação, então ela é a base para os próximos itens. Os valores do filtro são inteiros e há um campo de divisor, em vez de frações, para que a grade continue legível em filtros grandes: a média 9x9 é "81 vezes o valor 1, dividido por 81".
+
+**Como.** `convolve(matrix, kernel, divisor, normalize)`, em `backend/model/convolution.py`:
+
+1. valida que o filtro é quadrado, de dimensão ímpar (até 15) e só tem números finitos, e que o divisor é finito e diferente de zero (senão `ValueError`);
+2. aumenta a imagem de `tamanho // 2` pixels em cada lado, repetindo o pixel mais próximo da borda, para que a saída tenha o tamanho original;
+3. para cada posição do filtro, soma na saída a imagem deslocada multiplicada pelo peso. O filtro é girado 180°, como na convolução de verdade (em filtros simétricos isso não muda nada);
+4. divide pelo divisor e arredonda;
+5. coloca o resultado em 0 a 255.
+
+O passo 3 faz a conta de todos os pixels de uma vez para cada posição do filtro, em vez de um laço pixel a pixel. Isso mantém o resultado idêntico e deixa o filtro 9x9 de uma imagem de 960x540 em menos de 0,1 s. Não é usada nenhuma função pronta de convolução.
+
+O resultado de um filtro pode sair de 0 a 255 (o Laplaciano gera valores negativos, por exemplo). A opção **Resultado** do cartão escolhe o que fazer: **Cortar em 0 a 255** limita os valores, e **Normalizar** leva o menor valor para 0 e o maior para 255, que é o que se quer ver em filtros de borda. Em ambos os casos a imagem gravada no histórico já está em 0 a 255, e o valor real não é guardado.
+
+Ligação com a interface: a operação `"convolution"` recebe `kernel` (lista de listas), `divisor` e `normalize` (0 ou 1). O cartão **Filtro por convolução** fica no grupo **Filtros** e usa os controles novos de `frontend/js/controls.js` (`kernel` e `choice`). A pré-visualização roda numa versão reduzida da imagem, então o efeito dela parece um pouco mais forte que o resultado final.
 
 ## Filtros espaciais
 

@@ -4,8 +4,11 @@
  * `group` é a chave de GROUPS: cada grupo vira uma seção recolhível no painel.
  */
 
+import { buildControl } from "./controls.js";
+
 const GROUPS = {
   tones: "Tons e contraste",
+  filters: "Filtros",
   hide: "Esconder dados",
 };
 
@@ -78,6 +81,31 @@ const ADJUSTMENTS = [
       { key: "s1", label: "s1", min: 0, max: 255, step: 1, value: 85 },
       { key: "r2", label: "r2", min: 0, max: 255, step: 1, value: 170 },
       { key: "s2", label: "s2", min: 0, max: 255, step: 1, value: 170 },
+    ],
+  },
+
+  {
+    op: "equalize",
+    group: "tones",
+    title: "Equalização de histograma",
+    hint: "Espalha as intensidades por todo o intervalo, aumentando o contraste. Compare o histograma antes e depois.",
+    controls: [],
+  },
+
+  {
+    op: "convolution",
+    group: "filters",
+    title: "Filtro por convolução",
+    hint: "Cada pixel vira a soma dos vizinhos multiplicados pelos valores da grade, dividida pelo divisor. Escolha um modelo ou edite os valores.",
+    controls: [
+      { type: "kernel", key: "kernel", divisorKey: "divisor", size: 3, preset: "mean" },
+      {
+        type: "choice", key: "normalize", label: "Resultado", value: 0,
+        options: [
+          { label: "Cortar em 0 a 255", value: 0 },
+          { label: "Normalizar (mín a máx)", value: 1 },
+        ],
+      },
     ],
   },
 
@@ -169,7 +197,7 @@ export class AdjustmentsPanel {
     hint.textContent = adjustment.hint;
     body.append(hint);
 
-    const inputs = adjustment.controls.map((control) => this.#buildControl(control, body, () => this.#schedulePreview()));
+    const inputs = adjustment.controls.map((control) => buildControl(control, body, () => this.#schedulePreview()));
 
     const cancel = Object.assign(document.createElement("button"), { className: "button", textContent: "Cancelar" });
     const apply = Object.assign(document.createElement("button"), {
@@ -212,50 +240,8 @@ export class AdjustmentsPanel {
     entry.body.append(button, entry.result);
   }
 
-  #buildControl(control, body, onInput) {
-    if (control.type === "text") return this.#buildTextControl(control, body, onInput);
-    const row = document.createElement("div");
-    row.className = "adjust-row";
-
-    const label = Object.assign(document.createElement("label"), { textContent: control.label });
-    const input = Object.assign(document.createElement("input"), {
-      type: "range", min: control.min, max: control.max, step: control.step, value: control.value,
-    });
-    const value = Object.assign(document.createElement("span"), {
-      className: "adjust-value", textContent: control.value,
-    });
-    input.id = `adjust-${control.key}-${Math.random().toString(36).slice(2, 7)}`;
-    label.htmlFor = input.id;
-
-    input.addEventListener("input", () => {
-      value.textContent = input.value;
-      onInput();
-    });
-
-    row.append(label, input, value);
-    body.append(row);
-    return { control, input, value };
-  }
-
-  #buildTextControl(control, body, onInput) {
-    const label = Object.assign(document.createElement("label"), { className: "adjust-text-label", textContent: control.label });
-    const input = Object.assign(document.createElement("textarea"), {
-      className: "adjust-text", rows: 3, value: control.value,
-    });
-    input.id = `adjust-${control.key}-${Math.random().toString(36).slice(2, 7)}`;
-    label.htmlFor = input.id;
-    input.addEventListener("input", onInput);
-    body.append(label, input);
-    return { control, input, value: null };
-  }
-
   #paramsOf(entry) {
-    return Object.fromEntries(
-      entry.inputs.map(({ control, input }) => [
-        control.key,
-        control.type === "text" ? input.value : Number(input.value),
-      ]),
-    );
+    return Object.assign({}, ...entry.inputs.map((input) => input.read()));
   }
 
   #open(entry) {
@@ -273,10 +259,7 @@ export class AdjustmentsPanel {
     this.#active = null;
     entry.card.classList.remove("open");
     entry.body.hidden = true;
-    for (const { control, input, value } of entry.inputs) {
-      input.value = control.value;
-      if (value) value.textContent = control.value;
-    }
+    entry.inputs.forEach((input) => input.reset());
     if (entry.result) entry.result.hidden = true;
     if (cancelPreview) this.#callbacks.cancel();
   }

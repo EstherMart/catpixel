@@ -42,6 +42,8 @@ Para uma operação com parâmetros, cada item de `controls` vira um slider:
 controls: [{ key: "limit", label: "Limiar", min: 0, max: 255, step: 1, value: 128 }]
 ```
 
+Sem `type`, o controle é um slider. Os outros tipos, definidos em `frontend/js/controls.js`, são `text` (caixa de texto), `choice` (lista de opções com `options: [{ label, value }]`) e `kernel` (grade do filtro de convolução). Para criar um tipo novo, escreva uma função que devolva `{ read(), reset() }` e registre-a em `BUILDERS`.
+
 - `key` é o nome do parâmetro no backend (em `params`).
 - `value` é o valor inicial.
 - A pré-visualização, o botão **Aplicar**, o histórico e o desfazer funcionam sozinhos.
@@ -65,8 +67,8 @@ O caminho acima serve para operações que mudam a imagem a partir de números. 
 
 | Funcionalidade | O que muda |
 | --- | --- |
-| Histograma | Não devolve imagem. Crie um endpoint (por exemplo `GET /api/histogram`) que devolva as contagens, e um painel novo no frontend que desenhe o gráfico. |
-| Filtro por convolução com tamanho e valores escolhidos | Precisa de um controle novo no frontend (tamanho do filtro e grade de valores). O backend recebe a matriz do filtro em `params`. |
+| Histograma (já feito, serve de modelo) | Não devolve imagem. Tem o endpoint `GET /api/histogram`, que devolve as contagens, e o painel `frontend/js/histogram-panel.js`, que desenha o gráfico. |
+| Filtro por convolução (já feito, serve de modelo) | Usa o controle `kernel` (tamanho, modelos prontos, grade de valores e divisor) e o controle `choice` (lista de opções). O backend recebe a matriz do filtro em `params`. Novos filtros espaciais (média, Laplaciano, Sobel) podem reaproveitar `convolve` em `backend/model/convolution.py`. |
 | Chroma-key | Precisa enviar uma segunda imagem (a que substitui o fundo). Crie um endpoint de upload e um controle de arquivo. |
 | Espectro de Fourier editável | Precisa de um editor de desenho (pincel) no frontend e de endpoints que guardem o espectro e apliquem a inversa. |
 | Esteganografia (já feita, serve de modelo) | Esconder é uma operação comum. Ler devolve texto, então tem o endpoint próprio `GET /api/steganography`. No frontend, use um controle com `type: "text"` e `reveal: true` em `ADJUSTMENTS`, e `preview: false` quando a prévia reduzida não faz sentido. |

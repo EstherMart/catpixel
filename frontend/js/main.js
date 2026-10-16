@@ -1,5 +1,6 @@
 import { AdjustmentsPanel } from "./adjustments-panel.js";
 import { api } from "./api.js";
+import { HistogramPanel } from "./histogram-panel.js";
 import { renderHistory } from "./history-panel.js";
 import { buildMenubar } from "./menubar.js";
 import { StageView } from "./stage-view.js";
@@ -8,6 +9,7 @@ import { showToast } from "./toast.js";
 const $ = (id) => document.getElementById(id);
 
 const stage = new StageView();
+const histogram = new HistogramPanel($("histogram"));
 const fileInput = $("file-input");
 const compareSwitch = $("compare");
 
@@ -48,6 +50,8 @@ function render(refit = false) {
     ? `${state.name}  ·  ${state.width} × ${state.height} px`
     : "Nenhuma imagem aberta";
 
+  refreshHistogram();
+
   if (!hasImage) {
     stage.clear();
     $("status-zoom").textContent = "";
@@ -56,6 +60,20 @@ function render(refit = false) {
   if (!hasImage || refit) compareSwitch.checked = false;
   stage.setSize(state.width, state.height, { refit });
   showCurrentImage();
+}
+
+let histogramRequest = 0;
+
+/** Desenha o histograma da imagem que está na tela (a original, se "Ver original" estiver ligado). */
+async function refreshHistogram() {
+  if (!state.has_image) return histogram.clear();
+  const request = ++histogramRequest;
+  try {
+    const counts = await api.histogram(compareSwitch.checked ? "original" : "current");
+    if (request === histogramRequest) histogram.draw(counts);
+  } catch (error) {
+    showError(error);
+  }
 }
 
 function showCurrentImage() {
@@ -168,7 +186,10 @@ $("tool-zoom-in").addEventListener("click", () => stage.zoomBy(1.5));
 $("tool-zoom-out").addEventListener("click", () => stage.zoomBy(1 / 1.5));
 $("tool-fit").addEventListener("click", () => stage.fit());
 $("tool-actual").addEventListener("click", () => stage.actualSize());
-compareSwitch.addEventListener("change", showCurrentImage);
+compareSwitch.addEventListener("change", () => {
+  showCurrentImage();
+  refreshHistogram();
+});
 stage.onZoomChange = (scale) => ($("status-zoom").textContent = `Zoom ${Math.round(scale * 100)}%`);
 
 document.addEventListener("keydown", (event) => {
