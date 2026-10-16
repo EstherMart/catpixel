@@ -10,6 +10,53 @@ const ADJUSTMENTS = [
     hint: "Pixels com intensidade a partir do limiar ficam brancos; os demais, pretos.",
     controls: [{ key: "limit", label: "Limiar", min: 0, max: 255, step: 1, value: 128 }],
   },
+
+  {
+    op: "negative",
+    title: "Negativo",
+    hint: "Inverte as intensidades da imagem.",
+    controls: [],
+  },
+
+  {
+    op: "brightness",
+    title: "Brilho",
+    hint: "Multiplica as intensidades por um fator.",
+    controls: [
+      {
+        key: "factor",
+        label: "Fator",
+        min: 0,
+        max: 3,
+        step: 0.1,
+        value: 1,
+      },
+    ],
+  },
+
+  {
+    op: "gamma",
+    title: "Potência (Gama)",
+    hint: "Ajusta as intensidades por uma função de potência.",
+    controls: [
+      {
+        key: "gamma",
+        label: "Gama",
+        min: 0.1,
+        max: 3,
+        step: 0.1,
+        value: 1,
+      },
+    ],
+  },
+  
+  {
+    op: "log",
+    title: "Logaritmo",
+    hint: "Expande os níveis escuros e comprime os claros.",
+    controls: [],
+  },
+  
 ];
 
 const PREVIEW_DELAY_MS = 60;
