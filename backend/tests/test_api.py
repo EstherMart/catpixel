@@ -20,83 +20,6 @@ def png_bytes(color=(200, 200, 200), size=(8, 6)) -> bytes:
     return buffer.getvalue()
 
 
-def open_sample(client):
-    return client.post("/api/open", files={"file": ("foto.png", png_bytes(), "image/png")})
-
-
-def test_actions_without_image_are_rejected(client):
-    assert client.get("/api/image").status_code == 409
-    assert client.post("/api/apply", json={"op": "threshold", "params": {"limit": 1}}).status_code == 409
-
-
-def test_open_returns_the_state(client):
-    state = open_sample(client).json()
-    assert state["has_image"] is True
-    assert (state["width"], state["height"]) == (8, 6)
-    assert state["name"] == "foto.png"
-
-
-def test_open_rejects_a_file_that_is_not_an_image(client):
-    response = client.post("/api/open", files={"file": ("a.txt", b"texto", "text/plain")})
-    assert response.status_code == 400
-
-
-def test_apply_threshold_adds_a_history_step(client):
-    open_sample(client)
-    state = client.post("/api/apply", json={"op": "threshold", "params": {"limit": 128}}).json()
-    assert state["history"] == ["Imagem original", "Limiarização (128)"]
-    assert state["index"] == 1
-
-
-def test_apply_threshold_makes_the_image_black_and_white(client):
-    open_sample(client)
-    client.post("/api/apply", json={"op": "threshold", "params": {"limit": 250}})
-    image = Image.open(io.BytesIO(client.get("/api/image").content))
-    assert set(np.unique(np.array(image))) == {0}
-
-
-def test_invalid_parameters_and_operations_are_rejected(client):
-    open_sample(client)
-    assert client.post("/api/apply", json={"op": "threshold", "params": {"limit": 999}}).status_code == 422
-    assert client.post("/api/apply", json={"op": "threshold", "params": {}}).status_code == 422
-    assert client.post("/api/apply", json={"op": "nao-existe"}).status_code == 404
-
-
-def test_preview_does_not_change_the_history(client):
-    open_sample(client)
-    response = client.post("/api/preview", json={"op": "threshold", "params": {"limit": 128}})
-    assert response.status_code == 200
-    assert response.content.startswith(b"\x89PNG")
-    assert client.get("/api/state").json()["history"] == ["Imagem original"]
-
-
-def test_undo_redo_and_reset(client):
-    open_sample(client)
-    client.post("/api/apply", json={"op": "threshold", "params": {"limit": 128}})
-    assert client.post("/api/undo").json()["index"] == 0
-    assert client.post("/api/redo").json()["index"] == 1
-    assert client.post("/api/reset").json()["index"] == 0
-
-
-def test_original_image_is_kept_after_editing(client):
-    open_sample(client)
-    client.post("/api/apply", json={"op": "threshold", "params": {"limit": 250}})
-    original = Image.open(io.BytesIO(client.get("/api/image", params={"which": "original"}).content))
-    assert set(np.unique(np.array(original))) != {0}
-
-
-def test_save_downloads_bmp_and_jpg(client):
-    open_sample(client)
-    bmp = client.get("/api/save", params={"format": "bmp"})
-    assert bmp.content.startswith(b"BM")
-    assert "foto_editada.bmp" in bmp.headers["content-disposition"]
-
-    jpg = client.get("/api/save", params={"format": "jpg"})
-    assert jpg.content.startswith(b"\xff\xd8")
-
-    assert client.get("/api/save", params={"format": "gif"}).status_code == 400
-
-
 def photo_bytes(size=(60, 60)) -> bytes:
     noise = np.random.default_rng(2).integers(0, 256, size=size[::-1], dtype=np.uint8)
     buffer = io.BytesIO()
@@ -104,108 +27,132 @@ def photo_bytes(size=(60, 60)) -> bytes:
     return buffer.getvalue()
 
 
-@pytest.mark.parametrize("op, params, label", [
-    ("negative", {}, "Negativo"),
-    ("brightness", {"factor": 1.5}, "Brilho (x1.5)"),
-    ("gamma", {"gamma": 0.5}, "Gama (0.5)"),
-    ("log", {}, "Logaritmo"),
-    ("piecewise", {"r1": 50, "s1": 10, "r2": 200, "s2": 240}, "Linear por partes (50,10) (200,240)"),
-])
-def test_point_operations_are_applied_and_recorded(client, op, params, label):
+def open_sample(client):
+    return client.post("/api/open", files={"file": ("foto.png", png_bytes(), "image/png")})
+
+
+def open_photo(client):
+    return client.post("/api/open", files={"file": ("foto.png", photo_bytes(), "image/png")})
+
+
+def apply(client, op, params=None):
+    return client.post("/api/apply", json={"op": op, "params": params or {}})
+
+
+def current_pixels(client):
+    return np.array(Image.open(io.BytesIO(client.get("/api/image").content)))
+
+
+def test_actions_without_an_image_are_rejected(client):
+    assert client.get("/api/state").json()["has_image"] is False
+    for response in (client.get("/api/image"), apply(client, "negative"), client.get("/api/histogram"),
+                     client.get("/api/steganography"), client.post("/api/undo")):
+        assert response.status_code == 409
+
+
+def test_open_and_save(client):
+    state = open_sample(client).json()
+    assert state["has_image"] is True and (state["width"], state["height"]) == (8, 6) and state["name"] == "foto.png"
+    assert client.post("/api/open", files={"file": ("a.txt", b"texto", "text/plain")}).status_code == 400
+
+    bmp = client.get("/api/save", params={"format": "bmp"})
+    assert bmp.content.startswith(b"BM") and "foto_editada.bmp" in bmp.headers["content-disposition"]
+    assert client.get("/api/save", params={"format": "jpg"}).content.startswith(b"\xff\xd8")
+    assert client.get("/api/save", params={"format": "gif"}).status_code == 400
+
+
+def test_apply_preview_history_and_invalid_requests(client):
     open_sample(client)
-    state = client.post("/api/apply", json={"op": op, "params": params}).json()
-    assert state["history"][-1] == label
+    state = apply(client, "threshold", {"limit": 250}).json()
+    assert state["history"] == ["Imagem original", "Limiarização (250)"] and state["index"] == 1
+    assert set(np.unique(current_pixels(client))) == {0}  # 200 < 250: tudo preto
+    original = Image.open(io.BytesIO(client.get("/api/image", params={"which": "original"}).content))
+    assert set(np.unique(np.array(original))) == {200}  # a original continua guardada
+
+    preview = client.post("/api/preview", json={"op": "threshold", "params": {"limit": 1}})
+    assert preview.status_code == 200 and preview.content.startswith(b"\x89PNG")
+    assert client.get("/api/state").json()["history"] == ["Imagem original", "Limiarização (250)"]  # prévia não grava
+
+    assert client.post("/api/undo").json()["index"] == 0
+    assert client.post("/api/redo").json()["index"] == 1
+    assert client.post("/api/reset").json()["index"] == 0
+
+    assert apply(client, "threshold", {"limit": 999}).status_code == 422
+    assert apply(client, "threshold", {}).status_code == 422
+    assert apply(client, "nao-existe").status_code == 404
 
 
-def test_decimal_parameters_accept_integers_and_reject_text(client):
+def test_point_operations_are_applied_recorded_and_validated(client):
     open_sample(client)
-    assert client.post("/api/apply", json={"op": "brightness", "params": {"factor": 1}}).status_code == 200
-    assert client.post("/api/apply", json={"op": "brightness", "params": {"factor": "2"}}).status_code == 422
-    assert client.post("/api/apply", json={"op": "gamma", "params": {"gamma": 0}}).status_code == 422
-    assert client.post("/api/apply", json={"op": "piecewise", "params": {"r1": 1}}).status_code == 422
+    for op, params, label in (
+        ("negative", {}, "Negativo"),
+        ("brightness", {"factor": 1.5}, "Brilho (x1.5)"),
+        ("gamma", {"gamma": 0.5}, "Gama (0.5)"),
+        ("log", {}, "Logaritmo"),
+        ("piecewise", {"r1": 50, "s1": 10, "r2": 200, "s2": 240}, "Linear por partes (50,10) (200,240)"),
+    ):
+        assert apply(client, op, params).json()["history"][-1] == label
+
+    assert apply(client, "brightness", {"factor": 1}).status_code == 200  # o navegador pode mandar 1 no lugar de 1.0
+    for op, params in (("brightness", {"factor": "2"}), ("gamma", {"gamma": 0}), ("piecewise", {"r1": 1})):
+        assert apply(client, op, params).status_code == 422
 
 
-def test_steganography_hide_and_reveal_through_the_api(client):
-    client.post("/api/open", files={"file": ("foto.png", photo_bytes(), "image/png")})
-    assert client.get("/api/steganography").json() == {"found": False, "text": ""}
-
-    state = client.post("/api/apply", json={"op": "hide_message", "params": {"text": "Olá!"}}).json()
-    assert "Olá" not in " ".join(state["history"])  # o segredo não aparece no histórico
-    assert client.get("/api/steganography").json() == {"found": True, "text": "Olá!"}
-
-
-def test_steganography_survives_saving_as_bmp_but_not_as_jpg(client):
-    client.post("/api/open", files={"file": ("foto.png", photo_bytes(), "image/png")})
-    client.post("/api/apply", json={"op": "hide_message", "params": {"text": "segredo"}})
-
-    for fmt, expected in (("bmp", True), ("jpg", False)):
-        saved = client.get("/api/save", params={"format": fmt}).content
-        client.post("/api/open", files={"file": (f"s.{fmt}", saved, "application/octet-stream")})
-        assert client.get("/api/steganography").json()["found"] is expected
-        client.post("/api/open", files={"file": ("foto.png", photo_bytes(), "image/png")})
-        client.post("/api/apply", json={"op": "hide_message", "params": {"text": "segredo"}})
-
-
-def test_steganography_rejects_empty_text_and_messages_that_do_not_fit(client):
-    open_sample(client)  # 8x6: não cabe nem o cabeçalho
-    assert client.post("/api/apply", json={"op": "hide_message", "params": {"text": "oi"}}).status_code == 422
-    assert client.post("/api/apply", json={"op": "hide_message", "params": {"text": ""}}).status_code == 422
-    assert client.post("/api/apply", json={"op": "hide_message", "params": {"text": 5}}).status_code == 422
-
-
-def test_steganography_without_image_is_rejected(client):
-    assert client.get("/api/steganography").status_code == 409
-
-
-def test_histogram_endpoint_counts_every_pixel(client):
-    open_sample(client)  # 8x6, todo em 200
+def test_histogram_equalization_convolution_and_spatial_filters(client):
+    open_sample(client)  # 8x6, tudo em 200
     counts = client.get("/api/histogram").json()["counts"]
     assert len(counts) == 256 and counts[200] == 48 and sum(counts) == 48
-    assert client.get("/api/histogram", params={"which": "original"}).status_code == 200
-
-
-def test_histogram_follows_the_current_image(client):
-    open_sample(client)
-    client.post("/api/apply", json={"op": "negative", "params": {}})
+    apply(client, "negative")
     assert client.get("/api/histogram").json()["counts"][55] == 48
     assert client.get("/api/histogram", params={"which": "original"}).json()["counts"][200] == 48
 
-
-def test_histogram_without_image_is_rejected(client):
-    assert client.get("/api/histogram").status_code == 409
-
-
-def test_equalize_is_applied_and_recorded(client):
-    client.post("/api/open", files={"file": ("foto.png", photo_bytes(), "image/png")})
-    state = client.post("/api/apply", json={"op": "equalize", "params": {}}).json()
-    assert state["history"][-1] == "Equalização de histograma"
-
-
-def test_convolution_is_applied_and_keeps_the_size(client):
-    open_sample(client)
-    kernel = [[1] * 5 for _ in range(5)]
-    state = client.post(
-        "/api/apply", json={"op": "convolution", "params": {"kernel": kernel, "divisor": 25, "normalize": 0}}
-    ).json()
-    assert state["history"][-1] == "Convolução 5x5"
-    assert (state["width"], state["height"]) == (8, 6)
-
-
-def test_convolution_rejects_bad_parameters(client):
-    open_sample(client)
-    ok = [[0, 0, 0], [0, 1, 0], [0, 0, 0]]
-    for params in (
-        {"kernel": [[1, 1], [1, 1]], "divisor": 1, "normalize": 0},
-        {"kernel": "x", "divisor": 1, "normalize": 0},
-        {"kernel": ok, "divisor": 0, "normalize": 0},
-        {"kernel": ok, "normalize": 0},
-        {"divisor": 1, "normalize": 0},
+    open_photo(client)
+    box = [[1] * 5 for _ in range(5)]
+    for op, params, label in (
+        ("equalize", {}, "Equalização de histograma"),
+        ("convolution", {"kernel": box, "divisor": 25, "normalize": 0}, "Convolução 5x5"),
+        ("mean", {"size": 5}, "Média 5x5"),
+        ("gaussian", {"size": 3}, "Gaussiana 3x3"),
+        ("median", {"size": 7}, "Mediana 7x7"),
+        ("laplacian", {"diagonals": 1, "sharpen": 0}, "Laplaciano (só a imagem laplaciana)"),
+        ("highboost", {"size": 3, "k": 2.5, "gaussian": 1}, "High-boost (k=2.5)"),
     ):
-        assert client.post("/api/apply", json={"op": "convolution", "params": params}).status_code == 422
+        state = apply(client, op, params).json()
+        assert state["history"][-1] == label
+        assert (state["width"], state["height"]) == (60, 60)  # filtros mantêm o tamanho
+
+    identity = [[0, 0, 0], [0, 1, 0], [0, 0, 0]]
+    for op, params in (
+        ("mean", {"size": 4}),
+        ("median", {}),
+        ("highboost", {"size": 3, "k": -1, "gaussian": 0}),
+        ("laplacian", {"diagonals": 0}),
+        ("convolution", {"kernel": [[1, 1], [1, 1]], "divisor": 1, "normalize": 0}),
+        ("convolution", {"kernel": identity, "divisor": 0, "normalize": 0}),
+        ("convolution", {"kernel": "x", "divisor": 1, "normalize": 0}),
+    ):
+        assert apply(client, op, params).status_code == 422
+
+
+def test_steganography(client):
+    open_photo(client)
+    assert client.get("/api/steganography").json() == {"found": False, "text": ""}
+
+    state = apply(client, "hide_message", {"text": "Olá!"}).json()
+    assert "Olá" not in " ".join(state["history"])  # o segredo não aparece no histórico
+    assert client.get("/api/steganography").json() == {"found": True, "text": "Olá!"}
+
+    for fmt, expected in (("bmp", True), ("jpg", False)):  # só o BMP guarda a mensagem
+        saved = client.get("/api/save", params={"format": fmt}).content
+        client.post("/api/open", files={"file": (f"s.{fmt}", saved, "application/octet-stream")})
+        assert client.get("/api/steganography").json()["found"] is expected
+
+    open_sample(client)  # 8x6: não cabe nem o cabeçalho
+    for text in ("oi", "", 5):
+        assert apply(client, "hide_message", {"text": text}).status_code == 422
 
 
 def test_frontend_files_are_revalidated_by_the_browser(client):
     response = client.get("/")
-    assert response.status_code == 200
-    assert response.headers["cache-control"] == "no-cache"
+    assert response.status_code == 200 and response.headers["cache-control"] == "no-cache"
     assert client.get("/api/state").headers.get("cache-control") != "no-cache"

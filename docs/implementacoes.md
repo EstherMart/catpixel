@@ -86,7 +86,7 @@ A função `mean_brightness`, no mesmo arquivo, ainda não é usada por nada.
 - `reveal_message(matrix)` lê o cabeçalho e devolve o texto. Se a assinatura não bater, o tamanho for impossível ou o UTF-8 for inválido, devolve `None`. Assim, uma imagem sem mensagem mostra "nenhuma mensagem" e não lixo.
 - `capacity_bytes(matrix)` calcula `(largura · altura − 48) // 8`. Uma mensagem maior que isso lança `ValueError`.
 
-Esconder é uma operação comum (`"hide_message"`, com o parâmetro de texto `text`), então entra no histórico e pode ser desfeita. O rótulo do histórico não mostra o texto secreto. Revelar devolve texto, não imagem, e por isso tem endpoint próprio: `GET /api/steganography` responde `{"found": bool, "text": str}` e lê a imagem inteira, nunca a prévia reduzida. O item **Esteganografia → Esconder e revelar mensagem…** abre um painel com um campo de texto, o botão **Esconder** e o botão **Revelar mensagem da imagem**. Não há prévia, porque ela é reduzida e perderia a mensagem.
+Esconder é uma operação comum (`"hide_message"`, com o parâmetro de texto `text`), então entra no histórico e pode ser desfeita. O rótulo do histórico não mostra o texto secreto. Revelar devolve texto, não imagem, e por isso tem endpoint próprio: `GET /api/steganography` responde `{"found": bool, "text": str}` e lê a imagem inteira, nunca a prévia reduzida. O botão **Esteganografia**, na barra superior, mostra a operação **Esconder e revelar mensagem**, que abre um painel com um campo de texto, o botão **Esconder** e o botão **Revelar mensagem da imagem**. Não há prévia, porque ela é reduzida e perderia a mensagem.
 
 **Limitações.** Só o BMP guarda a mensagem: o JPG comprime com perdas e apaga os LSBs. Qualquer operação feita depois de esconder (brilho, negativo etc.) também destrói a mensagem, então esconda por último e salve em BMP. Imagens coloridas viram cinza ao abrir (veja [Abrir e salvar imagens](#abrir-e-salvar-imagens)), o que não afeta um BMP cinza salvo por este programa.
 
@@ -106,7 +106,7 @@ Esconder é uma operação comum (`"hide_message"`, com o parâmetro de texto `t
 
 **Por quê.** Subtrair `cdf_min` faz o menor tom da imagem virar 0 e o maior virar 255, aproveitando todo o intervalo. Uma imagem de um único tom não tem o que equalizar e volta igual, o que também evita divisão por zero.
 
-**Como.** `build_equalization_lut(counts)` e `equalize_histogram(matrix)`, em `backend/model/histogram.py`, calculam a tabela a partir do histograma e a aplicam com `apply_lut`, como nas outras operações pontuais. A operação `"equalize"` não tem parâmetros, e o atalho **Equalização** (lista de Ajustes, no painel Parâmetros) abre os parâmetros dela. Para ver o efeito, aplique e compare o gráfico do histograma com **Ver original**.
+**Como.** `build_equalization_lut(counts)` e `equalize_histogram(matrix)`, em `backend/model/histogram.py`, calculam a tabela a partir do histograma e a aplicam com `apply_lut`, como nas outras operações pontuais. A operação `"equalize"` não tem parâmetros, e a operação **Equalização de histograma**, na lista do botão **Ajustes**, abre os parâmetros dela. Para ver o efeito, aplique e compare o gráfico do histograma com **Ver original**.
 
 ### Filtro genérico por convolução
 
@@ -126,49 +126,53 @@ O passo 3 faz a conta de todos os pixels de uma vez para cada posição do filtr
 
 O resultado de um filtro pode sair de 0 a 255 (o Laplaciano gera valores negativos, por exemplo). A opção **Resultado** do cartão escolhe o que fazer: **Cortar em 0 a 255** limita os valores, e **Normalizar** leva o menor valor para 0 e o maior para 255, que é o que se quer ver em filtros de borda. Em ambos os casos a imagem gravada no histórico já está em 0 a 255, e o valor real não é guardado.
 
-Ligação com a interface: a operação `"convolution"` recebe `kernel` (lista de listas), `divisor` e `normalize` (0 ou 1). O item **Filtros → Filtro por convolução…** abre o painel de parâmetros, que usa os controles novos de `frontend/js/controls.js` (`kernel` e `choice`). A pré-visualização roda numa versão reduzida da imagem, então o efeito dela parece um pouco mais forte que o resultado final.
+Ligação com a interface: a operação `"convolution"` recebe `kernel` (lista de listas), `divisor` e `normalize` (0 ou 1). A operação **Filtro por convolução**, na lista do botão **Filtros**, abre o painel de parâmetros, que usa os controles novos de `frontend/js/controls.js` (`kernel` e `choice`). A pré-visualização roda numa versão reduzida da imagem, então o efeito dela parece um pouco mais forte que o resultado final.
 
 ## Filtros espaciais
 
+Os filtros desta seção seguem o Capítulo 3 do livro-texto (seções 3.5 e 3.6), estão na lista do botão **Filtros** e usam filtros quadrados de dimensão ímpar, de 3×3 até 11×11. A imagem de saída sempre tem o tamanho da original, e nas bordas o pixel mais próximo é repetido para fora da imagem. O código fica em `backend/model/spatial_filters.py` e reaproveita `convolve_raw`, de `backend/model/convolution.py`.
+
+Sobre os valores fora de 0 a 255: um filtro de derivada (como o Laplaciano) gera valores negativos e maiores que 255. Quando o objetivo é só mostrar o resultado do filtro, os valores são normalizados (o menor vira 0 e o maior vira 255) e a imagem fica acinzentada, porque o zero passa a ser um cinza médio. Isso é feito apenas na opção **Só o laplaciano**. Nos resultados de suavização e de aguçamento, que são imagens comuns, os valores são só limitados a 0 e 255. Todo o cálculo é feito com números reais, e o arredondamento para 8 bits é o último passo.
+
 ### Suavização pela média (simples)
 
-> ⬜ Ainda não implementado.
+**O quê.** Cada pixel vira a média simples dos pixels da vizinhança `n × n`, ele incluído. Isso equivale a um filtro com todos os pesos iguais a 1 e divisor `n²`.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** É o filtro de suavização mais simples e reduz ruído e detalhes finos. Quanto maior a vizinhança, maior o borrão. Uma região de intensidade constante não muda.
+
+**Como.** `mean_filter(matrix, size)` monta o filtro com `mean_kernel(size)` e o aplica com `convolve_raw`. Um tamanho par, menor que 1 ou maior que 15 lança `ValueError`. A operação `"mean"` recebe o inteiro `size`, e a operação **Suavização pela média**, na lista do botão **Filtros**, oferece os tamanhos de 3 a 11 numa lista.
 
 ### Suavização Gaussiana (média ponderada)
 
-> ⬜ Ainda não implementado.
+**O quê.** É uma média ponderada: os pixels perto do centro da vizinhança pesam mais que os das bordas, seguindo o formato de uma gaussiana.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** Com o mesmo tamanho, borra menos os detalhes que a média simples e evita o aspecto "em blocos" do borrão. Os pesos são inteiros (binomiais) e há um divisor, para que a conta continue exata e o filtro possa ser mostrado como grade.
+
+**Como.** `gaussian_kernel(size)` calcula uma linha do triângulo de Pascal (1 2 1 para 3, 1 4 6 4 1 para 5) e faz o produto externo dela consigo mesma. O divisor é a soma de todos os pesos (16 para 3×3 e 256 para 5×5). Os coeficientes binomiais aproximam bem a curva gaussiana. `gaussian_filter(matrix, size)` aplica esse filtro com `convolve_raw`. A operação `"gaussian"` recebe `size`.
 
 ### Filtro da mediana
 
-> ⬜ Ainda não implementado.
+**O quê.** Cada pixel vira a mediana das intensidades da vizinhança `n × n`, ele incluído: ordenam-se os `n²` valores e fica o do meio.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** É um filtro de estatística de ordem, não linear. Elimina pontos isolados (ruído "sal e pimenta") sem borrar as bordas, o que a média não consegue: um pixel muito claro no meio de um fundo escuro faz a média subir, mas não muda a mediana.
+
+**Como.** `median_filter(matrix, size)` não é uma convolução, então não usa filtro. Para cada posição da vizinhança, ela pega a imagem deslocada, empilha todas as camadas, ordena a pilha e escolhe a camada do meio. O trabalho é feito em faixas de 64 linhas, para a pilha não ocupar muita memória em imagens grandes. A operação `"median"` recebe `size`. Numa imagem de 1920×1080, o filtro 9×9 leva cerca de 1 s.
 
 ### Aguçamento por Laplaciano
 
-> ⬜ Ainda não implementado.
+**O quê.** O Laplaciano é a segunda derivada da imagem e realça as mudanças bruscas de intensidade. Há duas máscaras, com centro negativo (Figura 3.37 do livro): a de 4 vizinhos (`0 1 0 / 1 −4 1 / 0 1 0`) e a de 8 vizinhos, com as diagonais (`1 1 1 / 1 −8 1 / 1 1 1`). O aguçamento soma o resultado à imagem original: `g = f + c·∇²f`, com `c = −1` para máscaras de centro negativo, ou seja, `g = f − ∇²f`.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** O Laplaciano sozinho mostra só bordas sobre um fundo escuro. Somá-lo à imagem original devolve as variações gerais de intensidade e aumenta o contraste nas bordas, o que deixa a imagem mais nítida. A máscara de 8 vizinhos realça também as bordas diagonais, e o resultado é mais nítido.
+
+**Como.** `laplacian_filter(matrix, diagonals, sharpen)`, em `backend/model/spatial_filters.py`, calcula o Laplaciano com `convolve_raw`. Com `sharpen=True` (padrão), devolve `f − ∇²f` limitado a 0 e 255. Com `sharpen=False`, devolve só a imagem laplaciana, normalizada para exibição (menor valor em 0 e maior em 255), e por isso ela aparece acinzentada. Uma região de intensidade constante vira cinza médio nesse modo e fica igual no modo de aguçamento. A operação `"laplacian"` recebe `diagonals` e `sharpen` (0 ou 1), escolhidos em duas listas do painel.
 
 ### Aguçamento High-Boost
 
-> ⬜ Ainda não implementado.
+**O quê.** Subtrai da imagem uma versão suavizada dela, o que dá a "máscara de nitidez", e soma essa máscara de volta com um peso `k`: `g = f + k·(f − f_suavizada)`. Com `k = 1` é a máscara de nitidez (unsharp masking), com `k > 1` é o high-boost, e com `k` entre 0 e 1 o realce diminui. Com `k = 0` a imagem não muda.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** A diferença entre a imagem e a versão borrada guarda os detalhes finos e as bordas. O peso `k` controla a intensidade do realce sem trocar de filtro. Limitar o resultado a 0 e 255 evita que o realce produza valores inválidos.
+
+**Como.** `high_boost_filter(matrix, size, k, gaussian)` borra a imagem com a média (`gaussian=False`) ou com a gaussiana (`gaussian=True`) do tamanho `size`, calcula a máscara com números reais e soma `k` vezes ela à original. Um `k` negativo lança `ValueError`. A operação `"highboost"` recebe `size`, `k` (slider de 0 a 5, padrão 2) e `gaussian`.
 
 ### Sobel X e Y
 

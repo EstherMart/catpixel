@@ -1,4 +1,9 @@
-/** Barra de menus. Cada menu é uma lista de itens { label, shortcut, action, enabled }. */
+/**
+ * Barra superior. Cada entrada é de um destes tipos:
+ * - menu com lista de itens: { label, items: [{ label, shortcut, action, enabled }] };
+ * - botão simples: { key, label, action }, que chama `action` ao ser clicado.
+ * Devolve { setActive(key) }, que destaca o botão simples com essa chave.
+ */
 
 export function buildMenubar(container, menus) {
   let openMenu = null;
@@ -17,7 +22,24 @@ export function buildMenubar(container, menus) {
     openMenu = menu;
   }
 
+  const plainButtons = new Map(); // botões simples, por chave
+
   for (const definition of menus) {
+    if (!definition.items) {
+      const button = document.createElement("button");
+      button.className = "menu-trigger";
+      button.textContent = definition.label;
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        close();
+        definition.action();
+      });
+      button.addEventListener("pointerenter", () => openMenu && close());
+      plainButtons.set(definition.key, button);
+      container.append(button);
+      continue;
+    }
+
     const menu = document.createElement("div");
     menu.className = "menu";
 
@@ -65,4 +87,10 @@ export function buildMenubar(container, menus) {
 
   document.addEventListener("click", close);
   document.addEventListener("keydown", (event) => event.key === "Escape" && close());
+
+  return {
+    setActive(key) {
+      for (const [buttonKey, button] of plainButtons) button.classList.toggle("active", buttonKey === key);
+    },
+  };
 }

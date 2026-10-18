@@ -23,14 +23,18 @@ def validate_kernel(kernel) -> int:
     return size
 
 
-def convolve(matrix: np.ndarray, kernel, divisor: float = 1, normalize: bool = False) -> np.ndarray:
-    """Convolui a imagem com o filtro e devolve uma imagem do mesmo tamanho.
+def validate_size(size) -> int:
+    """Confere a dimensão de um filtro quadrado: ímpar, de 1 a MAX_KERNEL_SIZE."""
+    if isinstance(size, bool) or not isinstance(size, int) or size % 2 == 0 or not 1 <= size <= MAX_KERNEL_SIZE:
+        raise ValueError(f"O tamanho do filtro deve ser ímpar, de 1 a {MAX_KERNEL_SIZE}.")
+    return size
 
-    - Cada pixel vira a soma dos vizinhos multiplicados pelo filtro (girado 180°, como na convolução
-      de verdade), dividida por `divisor`.
+
+def convolve_raw(matrix: np.ndarray, kernel, divisor: float = 1) -> np.ndarray:
+    """Aplica o filtro e devolve os valores reais (float), que podem sair de 0 a 255 e ser negativos.
+
+    - O filtro é girado 180°, como na convolução de verdade (em filtros simétricos isso não muda nada).
     - Nas bordas, o pixel mais próximo é repetido para fora da imagem.
-    - O resultado pode sair de 0 a 255. Com `normalize=False` ele é cortado nesses limites. Com
-      `normalize=True` o menor valor vira 0 e o maior vira 255 (útil para filtros de borda).
     """
     if matrix.ndim != 2:
         raise ValueError("A imagem deve estar em escala de cinza.")
@@ -50,10 +54,29 @@ def convolve(matrix: np.ndarray, kernel, divisor: float = 1, normalize: bool = F
             weight = kernel[size - 1 - i][size - 1 - j]
             if weight != 0:
                 result += weight * padded[i:i + height, j:j + width]
-    result /= divisor
 
-    lowest, highest = result.min(), result.max()
-    if normalize and highest > lowest:
-        result = (result - lowest) / (highest - lowest) * MAX_INTENSITY
+    return result / divisor
 
-    return np.floor(np.clip(result, 0, MAX_INTENSITY) + 0.5).astype(np.uint8)
+
+def clip_to_uint8(values: np.ndarray) -> np.ndarray:
+    """Limita os valores a 0 a 255 e arredonda para o inteiro mais próximo."""
+    return np.floor(np.clip(values, 0, MAX_INTENSITY) + 0.5).astype(np.uint8)
+
+
+def normalize_for_display(values: np.ndarray) -> np.ndarray:
+    """Leva o menor valor para 0 e o maior para 255. Se todos forem iguais, apenas limita a 0 a 255."""
+    lowest, highest = values.min(), values.max()
+    if highest > lowest:
+        values = (values - lowest) / (highest - lowest) * MAX_INTENSITY
+    return clip_to_uint8(values)
+
+
+def convolve(matrix: np.ndarray, kernel, divisor: float = 1, normalize: bool = False) -> np.ndarray:
+    """Convolui a imagem com o filtro e devolve uma imagem do mesmo tamanho.
+
+    Cada pixel vira a soma dos vizinhos multiplicados pelo filtro (girado 180°), dividida por `divisor`.
+    Com `normalize=False` o resultado é cortado em 0 a 255. Com `normalize=True` o menor valor vira 0
+    e o maior vira 255 (útil para filtros de borda).
+    """
+    result = convolve_raw(matrix, kernel, divisor)
+    return normalize_for_display(result) if normalize else clip_to_uint8(result)

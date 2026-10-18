@@ -25,12 +25,12 @@ Cada funcionalidade passa por duas partes: o **backend** faz a conta, e o **fron
 
 ## 2. Frontend (JavaScript)
 
-Em `frontend/js/adjustments-panel.js`, adicione uma entrada em `ADJUSTMENTS`. O campo `group` escolhe onde a operação aparece. As chaves e os nomes estão em `GROUPS`; para uma categoria nova, acrescente uma linha lá e ela vira um menu na barra superior. O grupo `QUICK_GROUP` (`"tones"`, os ajustes mais usados) é a exceção: não vira menu, e sim uma lista de atalhos no painel lateral enquanto nada está aberto. Escolher uma operação mostra os parâmetros dela nesse painel:
+Em `frontend/js/adjustments-panel.js`, adicione uma entrada em `ADJUSTMENTS`. O campo `group` escolhe em qual botão da barra superior a operação aparece. As chaves e os nomes estão em `GROUPS`; para uma categoria nova, acrescente uma linha lá e ela ganha um botão. Clicar no botão mostra a lista das operações dele no painel lateral, e escolher uma operação mostra os parâmetros dela:
 
 ```js
 {
   op: "negative",                 // igual à chave registrada em OPERATIONS
-  group: "tones",                 // grupo "Ajustes": aparece como atalho no painel, sem menu
+  group: "tones",                 // botão "Ajustes" da barra superior
   title: "Negativo",
   hint: "Inverte as intensidades: cada pixel vira 255 menos o valor original.",
   controls: [],                   // sem parâmetros: o cartão só tem Aplicar e Cancelar
@@ -60,7 +60,7 @@ Sem `type`, o controle é um slider. Os outros tipos, definidos em `frontend/js/
 uvicorn backend.app:app --reload --port 8765
 ```
 
-Abra `http://localhost:8765`, abra uma imagem e experimente o novo item no menu. Rode também `python -m pytest`.
+Abra `http://localhost:8765`, abra uma imagem e experimente a nova operação na lista do botão dela. Rode também `python -m pytest`.
 
 ## Quando é preciso mais que isso
 
@@ -69,7 +69,7 @@ O caminho acima serve para operações que mudam a imagem a partir de números. 
 | Funcionalidade | O que muda |
 | --- | --- |
 | Histograma (já feito, serve de modelo) | Não devolve imagem. Tem o endpoint `GET /api/histogram`, que devolve as contagens, e o painel `frontend/js/histogram-panel.js`, que desenha o gráfico. |
-| Filtro por convolução (já feito, serve de modelo) | Usa o controle `kernel` (tamanho, modelos prontos, grade de valores e divisor) e o controle `choice` (lista de opções). O backend recebe a matriz do filtro em `params`. Novos filtros espaciais (média, Laplaciano, Sobel) podem reaproveitar `convolve` em `backend/model/convolution.py`. |
+| Filtro por convolução (já feito, serve de modelo) | Usa o controle `kernel` (tamanho, modelos prontos, grade de valores e divisor) e o controle `choice` (lista de opções). O backend recebe a matriz do filtro em `params`. Os filtros espaciais prontos (média, gaussiana, mediana, Laplaciano e high-boost) estão em `backend/model/spatial_filters.py`, e novos filtros lineares (como o Sobel) podem reaproveitar `convolve_raw`, de `backend/model/convolution.py`, que devolve os valores reais, sem limitar a 0 a 255. |
 | Chroma-key | Precisa enviar uma segunda imagem (a que substitui o fundo). Crie um endpoint de upload e um controle de arquivo. |
 | Espectro de Fourier editável | Precisa de um editor de desenho (pincel) no frontend e de endpoints que guardem o espectro e apliquem a inversa. |
 | Esteganografia (já feita, serve de modelo) | Esconder é uma operação comum. Ler devolve texto, então tem o endpoint próprio `GET /api/steganography`. No frontend, use um controle com `type: "text"` e `reveal: true` em `ADJUSTMENTS`, e `preview: false` quando a prévia reduzida não faz sentido. |

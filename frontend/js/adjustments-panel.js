@@ -1,9 +1,8 @@
 /**
  * Painel de parâmetros. Cada ajuste é uma entrada em ADJUSTMENTS ligada a uma operação do backend.
  * Para ter um novo ajuste: registrar a operação em backend/operations.py e listar aqui.
- * `group` é a chave de GROUPS: cada grupo vira um menu na barra superior, e escolher o item
- * do menu mostra aqui os parâmetros dele (um por vez). O grupo QUICK_GROUP, o mais usado,
- * não vira menu: ele aparece como lista de atalhos neste painel enquanto nada está aberto.
+ * `group` é a chave de GROUPS: cada grupo vira um botão na barra superior. Clicar nele mostra aqui
+ * a lista das operações do grupo, e escolher uma delas mostra os parâmetros dela (um por vez).
  */
 
 import { buildControl } from "./controls.js?v=5";
@@ -15,8 +14,11 @@ export const GROUPS = {
   hide: "Esteganografia",
 };
 
-/** Grupo mostrado como atalhos no painel, em vez de menu. */
-export const QUICK_GROUP = "tones";
+/** Tamanhos de filtro oferecidos (quadrados e ímpares). */
+const sizeControl = () => ({
+  type: "choice", key: "size", label: "Tamanho", value: 3,
+  options: [3, 5, 7, 9, 11].map((n) => ({ label: `${n} × ${n}`, value: n })),
+});
 
 export const ADJUSTMENTS = [
   {
@@ -116,6 +118,62 @@ export const ADJUSTMENTS = [
   },
 
   {
+    op: "mean",
+    group: "filters",
+    title: "Suavização pela média",
+    hint: "Cada pixel vira a média simples da vizinhança. Quanto maior o tamanho, maior o borrão.",
+    controls: [sizeControl()],
+  },
+
+  {
+    op: "gaussian",
+    group: "filters",
+    title: "Suavização gaussiana",
+    hint: "Média ponderada: o centro da vizinhança pesa mais. Borra menos os detalhes que a média simples.",
+    controls: [sizeControl()],
+  },
+
+  {
+    op: "median",
+    group: "filters",
+    title: "Filtro da mediana",
+    hint: "Cada pixel vira a mediana da vizinhança. Remove pontos isolados (ruído sal e pimenta) sem borrar as bordas.",
+    controls: [sizeControl()],
+  },
+
+  {
+    op: "laplacian",
+    group: "filters",
+    title: "Aguçamento por Laplaciano",
+    hint: "Realça mudanças bruscas de intensidade. Soma o laplaciano à imagem para deixá-la mais nítida, ou mostra só a imagem laplaciana.",
+    controls: [
+      {
+        type: "choice", key: "diagonals", label: "Máscara", value: 0,
+        options: [{ label: "4 vizinhos", value: 0 }, { label: "8 vizinhos (com diagonais)", value: 1 }],
+      },
+      {
+        type: "choice", key: "sharpen", label: "Resultado", value: 1,
+        options: [{ label: "Imagem aguçada", value: 1 }, { label: "Só o laplaciano", value: 0 }],
+      },
+    ],
+  },
+
+  {
+    op: "highboost",
+    group: "filters",
+    title: "Aguçamento high-boost",
+    hint: "Soma à imagem k vezes a diferença entre ela e a versão suavizada. Com k = 1 é a máscara de nitidez; com k maior que 1, o realce aumenta.",
+    controls: [
+      sizeControl(),
+      {
+        type: "choice", key: "gaussian", label: "Suavização", value: 0,
+        options: [{ label: "Média", value: 0 }, { label: "Gaussiana", value: 1 }],
+      },
+      { key: "k", label: "k", min: 0, max: 5, step: 0.1, value: 2 },
+    ],
+  },
+
+  {
     op: "hide_message",
     group: "hide",
     title: "Esconder e revelar mensagem",
@@ -134,7 +192,8 @@ export class AdjustmentsPanel {
   #callbacks;
   #cards = [];
   #active = null;
-  #placeholder;
+  #lists = new Map(); // grupo → lista de operações
+  #group = Object.keys(GROUPS)[0];
   #previewTimer;
 
   /** callbacks: { preview(op, params), apply(op, params), cancel(), reveal() → texto ou null } */
@@ -142,10 +201,22 @@ export class AdjustmentsPanel {
     this.#container = container;
     this.#callbacks = callbacks;
 
-    this.#placeholder = this.#buildQuickList();
-    container.append(this.#placeholder);
+    for (const key of Object.keys(GROUPS)) {
+      const list = this.#buildList(key);
+      this.#lists.set(key, list);
+      container.append(list);
+    }
 
     ADJUSTMENTS.forEach((adjustment) => this.#cards.push(this.#buildCard(adjustment)));
+    this.#showList();
+  }
+
+  /** Mostra a lista das operações do grupo `key` (a operação que estava aberta é cancelada). */
+  showGroup(key) {
+    if (!this.#lists.has(key)) return;
+    this.#group = key;
+    this.#closeActive(true);
+    this.#showList();
   }
 
   /** Mostra os parâmetros da operação `op` (a que estava aberta é cancelada). */
@@ -164,21 +235,22 @@ export class AdjustmentsPanel {
     this.#closeActive();
   }
 
-  /** O que o painel mostra com nada aberto: atalhos para os ajustes mais usados. */
-  #buildQuickList() {
+  /** Lista de operações de um grupo: o que o painel mostra com nenhuma operação aberta. */
+  #buildList(key) {
     const list = document.createElement("div");
-    list.append(Object.assign(document.createElement("h3"), { className: "quick-title", textContent: GROUPS[QUICK_GROUP] }));
+    list.append(Object.assign(document.createElement("h3"), { className: "quick-title", textContent: GROUPS[key] }));
 
-    for (const adjustment of ADJUSTMENTS.filter((item) => item.group === QUICK_GROUP)) {
+    for (const adjustment of ADJUSTMENTS.filter((item) => item.group === key)) {
       const button = Object.assign(document.createElement("button"), { className: "quick-item", textContent: adjustment.title });
       button.addEventListener("click", () => this.open(adjustment.op));
       list.append(button);
     }
-
-    list.append(Object.assign(document.createElement("p"), {
-      className: "coming-soon", textContent: "Filtros e outras ferramentas estão nos menus acima.",
-    }));
     return list;
+  }
+
+  /** Mostra só a lista do grupo atual (ou nenhuma, se há uma operação aberta). */
+  #showList() {
+    for (const [key, list] of this.#lists) list.hidden = this.#active !== null || key !== this.#group;
   }
 
   #buildCard(adjustment) {
@@ -248,7 +320,7 @@ export class AdjustmentsPanel {
     this.#closeActive(true);
     this.#active = entry;
     entry.card.hidden = false;
-    this.#placeholder.hidden = true;
+    this.#showList();
     this.#schedulePreview();
   }
 
@@ -258,7 +330,7 @@ export class AdjustmentsPanel {
     if (!entry) return;
     this.#active = null;
     entry.card.hidden = true;
-    this.#placeholder.hidden = false;
+    this.#showList();
     entry.inputs.forEach((input) => input.reset());
     if (entry.result) entry.result.hidden = true;
     if (cancelPreview) this.#callbacks.cancel();

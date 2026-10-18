@@ -12,6 +12,13 @@ from backend.model.gamma_log import gamma_correction, log_transformation
 from backend.model.histogram import equalize_histogram
 from backend.model.negative import negative_image
 from backend.model.piecewise_linear import piecewise_linear
+from backend.model.spatial_filters import (
+    gaussian_filter,
+    high_boost_filter,
+    laplacian_filter,
+    mean_filter,
+    median_filter,
+)
 from backend.model.steganography import hide_message
 from backend.model.thresholding import threshold_image
 
@@ -115,6 +122,40 @@ OPERATIONS: dict[str, Operation] = {
             _kernel_param(params, "kernel"),
             _number_param(params, "divisor"),
             bool(_number_param(params, "normalize")),
+        ),
+    ),
+
+    "mean": Operation(
+        label=lambda params: f"Média {params['size']}x{params['size']}",
+        run=lambda matrix, params: mean_filter(matrix, _int_param(params, "size")),
+    ),
+
+    "gaussian": Operation(
+        label=lambda params: f"Gaussiana {params['size']}x{params['size']}",
+        run=lambda matrix, params: gaussian_filter(matrix, _int_param(params, "size")),
+    ),
+
+    "median": Operation(
+        label=lambda params: f"Mediana {params['size']}x{params['size']}",
+        run=lambda matrix, params: median_filter(matrix, _int_param(params, "size")),
+    ),
+
+    "laplacian": Operation(
+        label=lambda params: "Laplaciano (aguçamento)" if params["sharpen"] else "Laplaciano (só a imagem laplaciana)",
+        run=lambda matrix, params: laplacian_filter(
+            matrix,
+            diagonals=bool(_number_param(params, "diagonals")),
+            sharpen=bool(_number_param(params, "sharpen")),
+        ),
+    ),
+
+    "highboost": Operation(
+        label=lambda params: f"High-boost (k={params['k']})",
+        run=lambda matrix, params: high_boost_filter(
+            matrix,
+            _int_param(params, "size"),
+            _number_param(params, "k"),
+            gaussian=bool(_number_param(params, "gaussian")),
         ),
     ),
 

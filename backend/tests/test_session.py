@@ -15,46 +15,28 @@ def session():
     return session
 
 
-def test_open_creates_the_original_step(session):
+def test_history_commit_undo_redo_and_discarding_redo_steps(session):
     assert session.state()["history"] == ["Imagem original"]
     assert session.state()["width"] == 3 and session.state()["height"] == 2
 
-
-def test_commit_undo_and_redo(session):
+    before = session.version
     session.commit("A", matrix_of(20))
-    assert session.current[0, 0] == 20
-
+    assert session.current[0, 0] == 20 and session.version > before
     session.undo()
     assert session.current[0, 0] == 10
-
     session.redo()
     assert session.current[0, 0] == 20
 
-
-def test_commit_after_undo_discards_the_redo_steps(session):
-    session.commit("A", matrix_of(20))
     session.undo()
-    session.commit("B", matrix_of(30))
+    session.commit("B", matrix_of(30))  # editar depois de desfazer descarta o passo refazível
     assert session.state()["history"] == ["Imagem original", "B"]
 
 
-def test_reset_goes_back_to_the_original_but_keeps_history(session):
+def test_reset_jump_and_state_without_image(session):
     session.commit("A", matrix_of(20))
     session.reset()
     assert np.array_equal(session.current, session.original)
-    assert len(session.state()["history"]) == 2
-
-
-def test_jump_to_invalid_step_fails(session):
+    assert len(session.state()["history"]) == 2  # voltar à original mantém o histórico
     with pytest.raises(IndexError):
         session.jump_to(5)
-
-
-def test_version_changes_on_every_modification(session):
-    before = session.version
-    session.commit("A", matrix_of(20))
-    assert session.version > before
-
-
-def test_state_without_image():
     assert EditorSession().state()["has_image"] is False

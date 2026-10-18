@@ -1,4 +1,4 @@
-import { ADJUSTMENTS, AdjustmentsPanel, GROUPS, QUICK_GROUP } from "./adjustments-panel.js?v=5";
+import { AdjustmentsPanel, GROUPS } from "./adjustments-panel.js?v=5";
 import { api } from "./api.js?v=5";
 import { HistogramPanel } from "./histogram-panel.js?v=5";
 import { renderHistory } from "./history-panel.js?v=5";
@@ -169,7 +169,7 @@ const undo = () => state.index > 0 && update(api.undo);
 const redo = () => state.index < state.history.length - 1 && update(api.redo);
 const hasImage = () => state.has_image;
 
-buildMenubar($("menus"), [
+const menubar = buildMenubar($("menus"), [
   {
     label: "Arquivo",
     items: [
@@ -179,21 +179,20 @@ buildMenubar($("menus"), [
       { label: "Salvar como JPG", action: () => download("jpg"), enabled: hasImage },
     ],
   },
-  // um menu por grupo de ajustes (o grupo mais usado fica como atalhos no painel); escolher o item mostra os parâmetros
-  ...Object.entries(GROUPS).filter(([key]) => key !== QUICK_GROUP).map(([key, label]) => ({
-    label,
-    items: ADJUSTMENTS.filter((adjustment) => adjustment.group === key).map((adjustment) => ({
-      label: `${adjustment.title}…`,
-      action: () => adjustments.open(adjustment.op),
-      enabled: hasImage,
-    })),
-  })),
+  // um botão por grupo: mostra a lista das operações dele no painel lateral
+  ...Object.entries(GROUPS).map(([key, label]) => ({ key, label, action: () => showGroup(key) })),
 ]);
 
 $("history-toggle").addEventListener("click", () => {
   const collapsed = $("panel-history").classList.toggle("collapsed");
   $("history-toggle").setAttribute("aria-expanded", String(!collapsed));
 });
+function showGroup(key) {
+  adjustments.showGroup(key);
+  menubar.setActive(key);
+}
+showGroup(Object.keys(GROUPS)[0]);
+
 $("welcome-open").addEventListener("click", chooseFile);
 $("tool-zoom-in").addEventListener("click", () => stage.zoomBy(1.5));
 $("tool-zoom-out").addEventListener("click", () => stage.zoomBy(1 / 1.5));
