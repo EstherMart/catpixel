@@ -4,11 +4,12 @@ import numpy as np
 from PIL import Image
 
 from backend.model.image_io import encode_image, load_image, save_image
+from backend.model.sampling import downscale_for_preview
 
 SAMPLE = np.array([[0, 128, 255], [10, 20, 30]], dtype=np.uint8)
 
 
-def test_images_are_saved_loaded_and_encoded_as_grayscale_matrices(tmp_path):
+def test_images_are_saved_loaded_encoded_and_downscaled_for_preview(tmp_path):
     path = str(tmp_path / "copia.bmp")
     save_image(SAMPLE, path)
     assert np.array_equal(load_image(path), SAMPLE)  # BMP não perde pixels
@@ -22,3 +23,7 @@ def test_images_are_saved_loaded_and_encoded_as_grayscale_matrices(tmp_path):
     assert encode_image(SAMPLE, "PNG").startswith(b"\x89PNG")
     assert encode_image(SAMPLE, "BMP").startswith(b"BM")
     assert encode_image(SAMPLE, "JPEG").startswith(b"\xff\xd8")
+
+    assert downscale_for_preview(np.zeros((10, 20), dtype=np.uint8), 640).shape == (10, 20)  # imagem pequena fica igual
+    height, width = downscale_for_preview(np.zeros((1000, 2000), dtype=np.uint8), 640).shape
+    assert max(height, width) <= 640

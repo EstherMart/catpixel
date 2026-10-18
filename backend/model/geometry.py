@@ -82,17 +82,24 @@ def scaled_shape(shape: tuple[int, int], scale_x: float, scale_y: float) -> tupl
     return new_height, new_width
 
 
-def scale_image(matrix: np.ndarray, scale_x: float, scale_y: float, method: str = BILINEAR) -> np.ndarray:
-    """Amplia ou reduz a imagem: a largura é multiplicada por `scale_x` e a altura por `scale_y`."""
+def resize_image(matrix: np.ndarray, new_height: int, new_width: int, method: str = BILINEAR) -> np.ndarray:
+    """Redimensiona a imagem para exatamente (new_height, new_width)."""
     _check_matrix(matrix)
     _check_method(method)
-    new_height, new_width = scaled_shape(matrix.shape, scale_x, scale_y)
+    _check_output_size(new_height, new_width)
 
     # o centro do pixel de saída (i + 0.5)/escala, menos meio pixel, é a posição dele na imagem original
     xs = (np.arange(new_width) + 0.5) / (new_width / matrix.shape[1]) - 0.5
     ys = (np.arange(new_height) + 0.5) / (new_height / matrix.shape[0]) - 0.5
     grid_x, grid_y = np.meshgrid(xs, ys)
     return _sample(matrix, grid_x, grid_y, method, clamp=True)
+
+
+def scale_image(matrix: np.ndarray, scale_x: float, scale_y: float, method: str = BILINEAR) -> np.ndarray:
+    """Amplia ou reduz a imagem: a largura é multiplicada por `scale_x` e a altura por `scale_y`."""
+    _check_matrix(matrix)
+    new_height, new_width = scaled_shape(matrix.shape, scale_x, scale_y)
+    return resize_image(matrix, new_height, new_width, method)
 
 
 def rotated_shape(shape: tuple[int, int], angle: float, expand: bool) -> tuple[int, int]:

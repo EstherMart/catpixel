@@ -12,6 +12,7 @@ export const GROUPS = {
   tones: "Ajustes",
   filters: "Filtros",
   geometry: "Geometria",
+  frequency: "Frequência",
   hide: "Esteganografia",
 };
 
@@ -221,6 +222,22 @@ export const ADJUSTMENTS = [
   },
 
   {
+    op: "frequency_filter",
+    group: "frequency",
+    title: "Espectro de Fourier",
+    hint: "Mostra o espectro de frequências da imagem na tela. Pinte nele: preto elimina frequências, branco as mantém e cinza as atenua. Perto do centro ficam as frequências baixas (formas grandes) e longe dele as altas (detalhes e bordas). Aplicar calcula a transformada inversa e gera a imagem filtrada.",
+    preview: false, // a tela está mostrando o espectro, não a imagem
+    applyLabel: "Aplicar filtro",
+    controls: [
+      { type: "spectrum", key: "mask" },
+      {
+        type: "choice", key: "normalize", label: "Resultado", value: 0,
+        options: [{ label: "Cortar em 0 a 255", value: 0 }, { label: "Normalizar (mín a máx)", value: 1 }],
+      },
+    ],
+  },
+
+  {
     op: "hide_message",
     group: "hide",
     title: "Esconder e revelar mensagem",
@@ -243,7 +260,7 @@ export class AdjustmentsPanel {
   #group = Object.keys(GROUPS)[0];
   #previewTimer;
 
-  /** callbacks: { preview(op, params), apply(op, params), cancel(), reveal() → texto ou null } */
+  /** callbacks: { preview(op, params), apply(op, params), cancel(), reveal() → texto ou null, context } */
   constructor(container, callbacks) {
     this.#container = container;
     this.#callbacks = callbacks;
@@ -317,7 +334,8 @@ export class AdjustmentsPanel {
     hint.textContent = adjustment.hint;
     body.append(hint);
 
-    const inputs = adjustment.controls.map((control) => buildControl(control, body, () => this.#schedulePreview()));
+    const inputs = adjustment.controls.map((control) =>
+      buildControl(control, body, () => this.#schedulePreview(), this.#callbacks.context));
 
     const cancel = Object.assign(document.createElement("button"), { className: "button", textContent: "Cancelar" });
     const apply = Object.assign(document.createElement("button"), {
@@ -368,6 +386,7 @@ export class AdjustmentsPanel {
     this.#active = entry;
     entry.card.hidden = false;
     this.#showList();
+    entry.inputs.forEach((input) => input.open?.()); // controles que precisam preparar algo ao abrir
     this.#schedulePreview();
   }
 

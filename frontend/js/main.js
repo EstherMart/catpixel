@@ -122,7 +122,27 @@ function cancelPreview() {
   showCurrentImage();
 }
 
+/** O que controles especiais (como o editor de espectro) podem fazer na área da imagem. */
+const stageContext = {
+  api,
+  showError,
+  wrap: $("canvas-wrap"),
+  showSpectrum(url, width, height) {
+    discardPreview();
+    frameSize = `espectro ${width}x${height}`;
+    stage.setSize(width, height, { refit: true });
+    stage.showUrl(url);
+  },
+  restoreImage() {
+    frameSize = "";
+    if (!state.has_image) return;
+    setFrame(state.width, state.height, { refit: true });
+    showCurrentImage();
+  },
+};
+
 const adjustments = new AdjustmentsPanel($("adjustments"), {
+  context: stageContext,
   preview: previewAdjustment,
   apply: (op, params) => update(() => api.apply(op, params)),
   cancel: cancelPreview,

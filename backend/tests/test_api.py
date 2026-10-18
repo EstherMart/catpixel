@@ -1,3 +1,4 @@
+import base64
 import io
 
 import numpy as np
@@ -37,6 +38,13 @@ def open_photo(client):
 
 def apply(client, op, params=None):
     return client.post("/api/apply", json={"op": op, "params": params or {}})
+
+
+def mask_png(width, height, value=255) -> str:
+    """Máscara de espectro (imagem cinza uniforme) em PNG codificado em base64, como o navegador envia."""
+    buffer = io.BytesIO()
+    Image.fromarray(np.full((height, width), value, dtype=np.uint8)).save(buffer, format="PNG")
+    return base64.b64encode(buffer.getvalue()).decode()
 
 
 def current_pixels(client):
@@ -151,6 +159,24 @@ def test_histogram_equalization_convolution_spatial_filters_and_geometry(client)
         ("rotate_pivot", {"angle": 10, "pivot_x": 150, "pivot_y": 0, "method": 1}),
     ):
         assert apply(client, op, params).status_code == 422
+
+    # domínio da frequência (a imagem agora tem 18x16)
+    before = current_pixels(client)
+    fft = client.get("/api/spectrum", params={"algorithm": 0})
+    assert fft.content.startswith(b"\x89PNG") and fft.headers["x-spectrum-size"] == "32x16"  # FFT completa até potência de 2
+    assert client.get("/api/spectrum", params={"algorithm": 1}).headers["x-spectrum-size"] == "18x16"  # DFT mantém o tamanho
+    state = apply(client, "frequency_filter", {"mask": mask_png(32, 16), "algorithm": 0, "normalize": 0}).json()
+    assert state["history"][-1] == "Filtro no espectro (FFT)" and (state["width"], state["height"]) == (18, 16)
+    assert np.array_equal(current_pixels(client), before)  # máscara toda branca não muda a imagem
+    state = apply(client, "frequency_filter", {"mask": mask_png(18, 16, 0), "algorithm": 1, "normalize": 0}).json()
+    assert state["history"][-1] == "Filtro no espectro (DFT)" and not current_pixels(client).any()  # máscara preta zera
+    for params in ({"mask": "isto não é base64", "algorithm": 0, "normalize": 0}, {"mask": mask_png(4, 4), "algorithm": 5}, {"algorithm": 0, "normalize": 0}):
+        assert apply(client, "frequency_filter", params).status_code == 422
+
+    big = io.BytesIO()
+    Image.fromarray(np.zeros((1100, 1100), dtype=np.uint8)).save(big, format="PNG")
+    client.post("/api/open", files={"file": ("grande.png", big.getvalue(), "image/png")})
+    assert client.get("/api/spectrum", params={"algorithm": 1}).status_code == 422  # DFT ingênua não aceita imagem grande
 
 
 def test_steganography(client):

@@ -46,6 +46,13 @@ export const api = {
     return { blob: await response.blob(), width, height };
   },
 
+  /** Imagem do espectro de Fourier (deslocado) da imagem atual. algorithm: 0 = FFT, 1 = DFT. */
+  async spectrum(algorithm) {
+    const response = await request(`/api/spectrum?algorithm=${algorithm}`);
+    const [width, height] = response.headers.get("X-Spectrum-Size").split("x").map(Number);
+    return { blob: await response.blob(), width, height, seconds: response.headers.get("X-Seconds") };
+  },
+
   /** Contagem de pixels por intensidade (256 valores) da imagem atual ou da original. */
   async histogram(which = "current") {
     return (await (await request(`/api/histogram?which=${which}`)).json()).counts;

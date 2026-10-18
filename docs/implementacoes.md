@@ -227,37 +227,39 @@ As duas interpolações são as mesmas na escala e nas rotações:
 
 ## Domínio da frequência
 
+Tudo desta seção está em `backend/model/frequency.py` e no botão **Frequência** da barra superior. **Nenhuma função de `numpy.fft` é usada no programa:** as duas transformadas são escritas à mão. O `numpy.fft` aparece apenas nos testes, como referência para conferir os resultados (a diferença é da ordem de 1e-10).
+
 ### Transformada Discreta de Fourier
 
-> ⬜ Ainda não implementado.
+**O quê.** Transforma a imagem em uma matriz de números complexos que diz quanto de cada frequência a imagem contém. A DFT 2D de uma imagem `f` de `M × N` pixels é `F(u, v) = Σx Σy f(x, y) · e^(−j·2π·(ux/M + vy/N))`.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** Como a exponencial se separa em uma parte de `x` e outra de `y`, a DFT 2D é uma DFT 1D em cada linha seguida de uma DFT 1D em cada coluna. Escrita como multiplicação de matrizes, fica `F = W_M · f · W_N`, em que `W[k, n] = e^(−j·2π·k·n/N)`. Isso é a definição, sem atalhos, e funciona para qualquer tamanho de imagem. O custo é proporcional ao cubo do lado, então a versão ingênua só aceita imagens de até 1024 pixels de lado (cerca de 1 s no 1024 × 1024) e responde com uma mensagem pedindo a FFT nas maiores.
+
+**Como.** `dft2(matrix)` monta as duas matrizes de Fourier e as multiplica. A inversa, `idft2(spectrum)`, usa as matrizes conjugadas e divide por `M · N`. Na interface, o algoritmo **DFT (ingênua, lenta)** é uma das opções do editor de espectro.
 
 ### Transformada Rápida de Fourier (FFT)
 
-> ⬜ Ainda não implementado.
+**O quê.** O mesmo resultado da DFT, calculado em tempo proporcional a `N·log N` por linha. É a implementação própria do algoritmo de Cooley-Tukey radix-2, que vale pontos extras no enunciado.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** O algoritmo divide a transformada de `N` pontos em duas de `N/2` (pontos de índice par e ímpar) e as junta com `X = par + w·ímpar` e `Y = par − w·ímpar`, em que `w = e^(−j·2π·k/N)` é o fator de rotação. Isso exige que `N` seja potência de 2. Por isso a imagem é completada com zeros, embaixo e à direita, até os dois lados serem potências de 2 (1280 × 720 vira 2048 × 1024), e o resultado é cortado de volta ao tamanho original depois da inversa. Esse preenchimento tem dois efeitos visíveis: aparece uma "cruz" brilhante no espectro (a borda abrupta entre a imagem e os zeros) e a frequência zero guarda a média **contando os zeros**, então um filtro que só deixa a frequência zero produz uma imagem lisa mais escura que a média original.
+
+**Como.** `fft2(matrix)` e `ifft2(spectrum)`. A função `_fft_last_axis` reordena os elementos pela inversão dos bits do índice e depois junta blocos de tamanho 1, 2, 4, 8 e assim por diante. Cada etapa faz as contas de todas as linhas ao mesmo tempo com numpy, e a transformada 2D é a das linhas seguida da das colunas. Uma imagem 1280 × 720 (2048 × 1024 depois do preenchimento) leva cerca de 1,4 s. O lado máximo depois do preenchimento é 2048, e imagens maiores recebem uma mensagem sugerindo reduzir com a escala. A inversa usa o sinal oposto no expoente e divide por `M · N`.
 
 ### Espectro deslocado com edição pelo usuário
 
-> ⬜ Ainda não implementado.
+**O quê.** O botão **Frequência → Espectro de Fourier** mostra, na área da imagem, o espectro com a frequência zero no centro, e a pessoa pinta nele com o mouse. O pincel pode ser **preto** (elimina as frequências pintadas), **branco** (mantém ou restaura) ou **cinza** (atenua pelo tom escolhido), com tamanho de 2 a 200 pixels e **maciez** de 0 (borda dura) a 100 (pincel suave, que vai ficando transparente da ponta para a borda).
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** Na saída da DFT a frequência zero fica no canto. Deslocar o espectro (`shift`, que gira a matriz de `altura/2` e `largura/2`) a leva para o centro, e então as frequências baixas (formas grandes) ficam perto do centro e as altas (detalhes e bordas) longe dele. A magnitude é mostrada em escala logarítmica, `s = 255 · ln(1 + |F|) / ln(1 + |F|máx)`, porque a frequência zero é milhares de vezes maior que as outras e, sem o logaritmo, só o ponto central apareceria. A pessoa não edita os números: ela pinta uma **máscara** em tons de cinza do tamanho do espectro (preto = 0, branco = 1). O espectro de uma imagem real é simétrico em torno do centro, então a caixa **Espelhar no lado oposto** (ligada por padrão) repete cada pincelada no ponto simétrico, e a imagem filtrada continua real.
+
+**Como.** O endpoint `GET /api/spectrum?algorithm=0|1` calcula o espectro da imagem atual (0 = FFT e 1 = DFT) e devolve a imagem em PNG, com o tamanho em `X-Spectrum-Size` e o tempo em `X-Seconds`. No frontend, o controle `spectrum`, em `frontend/js/controls.js`, mostra essa imagem na área central e coloca um `canvas` por cima, no mesmo tamanho do espectro e com mistura multiplicativa (branco não muda nada, preto escurece). O pincel carimba círculos ao longo do traço, e o zoom da tela continua funcionando. O botão do meio do mouse move a imagem, já que o botão esquerdo está pintando. **Limpar edições** volta a máscara ao branco. Enquanto o editor está aberto não há pré-visualização, porque a tela está ocupada com o espectro: o resultado só aparece em **Aplicar filtro**, e pode ser desfeito no histórico.
 
 ### Transformada inversa
 
-> ⬜ Ainda não implementado.
+**O quê.** Aplica a transformada inversa ao espectro multiplicado pela máscara e obtém a imagem filtrada: `f' = IDFT(F · M)`. Máscara toda branca devolve a imagem original, preta zera tudo, e um círculo preto no centro deixa só os detalhes (passa-alta).
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** Multiplicar o espectro pela máscara é a definição de um filtro no domínio da frequência. A conta é sempre feita sobre o espectro original da imagem atual, por isso a operação não guarda estado no servidor e entra no histórico como qualquer outra. O resultado da inversa é complexo, e só a parte real é usada. Ela pode sair de 0 a 255 (um passa-alta remove a frequência zero e gera valores negativos), e a opção **Resultado** escolhe entre **Cortar em 0 a 255** e **Normalizar**, que leva o menor valor a 0 e o maior a 255, e a imagem fica acinzentada, como na convolução.
+
+**Como.** `filter_with_mask(matrix, mask, algorithm, normalize)`: calcula o espectro, redimensiona a máscara com a interpolação bilinear se o tamanho for outro (o que também faz a pré-visualização reduzida funcionar), multiplica, desfaz o deslocamento (`unshift`), aplica a inversa, corta o preenchimento e converte para 8 bits. A operação `"frequency_filter"` recebe `mask` (a máscara em PNG codificada em base64), `algorithm` (0 ou 1) e `normalize` (0 ou 1). Uma máscara que não seja uma imagem válida lança `ValueError`.
 
 ## Imagens coloridas
 

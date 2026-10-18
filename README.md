@@ -9,7 +9,7 @@
   Todos os algoritmos são implementados do zero, manipulando diretamente a matriz da imagem.
 </p>
 
-> **Status:** em desenvolvimento. A leitura/gravação de imagens, as operações pontuais (limiarização, negativo, brilho, gama, logaritmo, linear por partes), o histograma e a equalização, a convolução genérica, os filtros de média, gaussiana, mediana, Laplaciano e high-boost, a escala e a rotação (com e sem pivô), a esteganografia e a interface web (menus, zoom, histórico, desfazer/refazer) estão prontas. Os demais algoritmos ainda não foram implementados (veja o [Roadmap](#roadmap)).
+> **Status:** em desenvolvimento. A leitura/gravação de imagens, as operações pontuais (limiarização, negativo, brilho, gama, logaritmo, linear por partes), o histograma e a equalização, a convolução genérica, os filtros de média, gaussiana, mediana, Laplaciano e high-boost, a escala e a rotação (com e sem pivô), a DFT e a FFT próprias com edição do espectro, a esteganografia e a interface web (menus, zoom, histórico, desfazer/refazer) estão prontas. Os demais algoritmos ainda não foram implementados (veja o [Roadmap](#roadmap)).
 
 ## Sumário
 
@@ -91,10 +91,10 @@ Legenda: ✅ pronto · 🚧 em andamento · ⬜ pendente
 
 | Funcionalidade                                                            | Status |
 | ------------------------------------------------------------------------- | ------ |
-| Transformada Discreta de Fourier (própria)                                | ⬜     |
-| Transformada Rápida (FFT)                                                 | ⬜     |
-| Espectro deslocado com edição pelo usuário (pincel preto, branco e suave) | ⬜     |
-| Transformada inversa a partir do espectro editado                         | ⬜     |
+| Transformada Discreta de Fourier (própria)                                | ✅     |
+| Transformada Rápida (FFT)                                                 | ✅     |
+| Espectro deslocado com edição pelo usuário (pincel preto, branco e suave) | ✅     |
+| Transformada inversa a partir do espectro editado                         | ✅     |
 
 ### Imagens coloridas
 
@@ -122,7 +122,7 @@ Legenda: ✅ pronto · 🚧 em andamento · ⬜ pendente
 5. 🚧 Convolução genérica e filtros espaciais (prontos: média, gaussiana, mediana, Laplaciano e high-boost; faltam Sobel e gradiente)
 6. ✅ Escala e rotação com interpolação
 7. ✅ Esteganografia
-8. ⬜ Fourier e edição do espectro
+8. ✅ Fourier e edição do espectro
 9. ⬜ Imagens coloridas (HSI, chroma-key, sépia etc.)
 10. 🚧 Interface gráfica integrando tudo (base pronta; cada algoritmo novo ganha um painel)
 
@@ -160,7 +160,7 @@ Abra <http://localhost:8765> no navegador. O mesmo servidor entrega a interface 
 Na interface:
 
 1. Clique em **Abrir imagem** ou arraste um arquivo para a janela.
-2. Clique em um botão da barra superior (**Ajustes**, **Filtros**, **Geometria** ou **Esteganografia**): a lista das operações dele aparece no painel **Parâmetros**, à direita. Escolha uma operação para ver os controles dela e mexa neles; a pré-visualização muda na hora. **Cancelar** volta para a lista. O gráfico do histograma fica acima desse painel.
+2. Clique em um botão da barra superior (**Ajustes**, **Filtros**, **Geometria**, **Frequência** ou **Esteganografia**): a lista das operações dele aparece no painel **Parâmetros**, à direita. Escolha uma operação para ver os controles dela e mexa neles; a pré-visualização muda na hora. **Cancelar** volta para a lista. O gráfico do histograma fica acima desse painel.
 3. Clique em **Aplicar** para gravar a edição no histórico, ou em **Cancelar**.
 4. Use **Ver original** para comparar, o painel **Histórico**, na coluna da direita (ou Ctrl+Z / Ctrl+Shift+Z), para voltar ou refazer, e o menu **Arquivo** para salvar em BMP ou JPG.
 5. Roda do mouse dá zoom e arrastar move a imagem. Duplo clique ajusta à tela.
@@ -200,6 +200,7 @@ catpixel/
 │   │   ├── convolution.py        # convolução com filtro quadrado ímpar
 │   │   ├── spatial_filters.py    # média, gaussiana, mediana, Laplaciano e high-boost
 │   │   ├── geometry.py           # escala e rotação (com pivô) com interpolação
+│   │   ├── frequency.py          # DFT, FFT, espectro deslocado e filtro por máscara
 │   │   ├── steganography.py      # esconder e revelar texto (LSB)
 │   │   └── utils/lut.py          # aplica uma tabela de 256 tons à imagem
 │   └── tests/
@@ -235,5 +236,5 @@ O passo a passo completo está em [docs/novas-funcionalidades.md](docs/novas-fun
 - O Pillow é usado **somente** para abrir e salvar arquivos.
 - Nenhuma biblioteca de processamento de imagens pode ser usada nos algoritmos. Eles manipulam a matriz da imagem diretamente.
 - Bibliotecas de álgebra linear (como o NumPy) são permitidas, mas não suas funções que sejam, elas próprias, requisito do trabalho.
-- Se a DFT for implementada de forma ingênua, o programa também deve oferecer uma FFT de biblioteca, para que imagens grandes sejam viáveis.
+- Se a DFT for implementada de forma ingênua, o programa também deve oferecer uma FFT, para que imagens grandes sejam viáveis. Aqui a FFT é própria (radix-2, em `backend/model/frequency.py`), então não há dependência de `numpy.fft`; ele só é usado nos testes, como referência.
 - Ao exibir o resultado de filtros que geram valores negativos ou acima de 255, normalize os valores apenas para exibição.

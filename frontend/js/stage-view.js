@@ -106,7 +106,8 @@ export class StageView {
   }
 
   #startDrag(event) {
-    if (!this.hasImage || event.button !== 0) return;
+    if (!this.hasImage || (event.button !== 0 && event.button !== 1)) return;
+    if (event.button === 1) event.preventDefault(); // evita a rolagem automática do botão do meio
     this.#drag = { x: event.clientX - this.#pan.x, y: event.clientY - this.#pan.y };
     this.#stage.setPointerCapture(event.pointerId);
     this.#stage.classList.add("panning");

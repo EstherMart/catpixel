@@ -313,3 +313,9 @@ input[type="range"]:focus-visible { outline: 2px solid var(--green); outline-off
 }
 #history-toggle::after { content: "›"; font-size: 16px; transform: rotate(90deg); transition: transform 0.15s; }
 #panel-history.collapsed #history-toggle::after { transform: none; }
+
+/* ---------- editor do espectro ---------- */
+.spectrum-mask { position: absolute; left: 0; top: 0; width: 100%; height: 100%; cursor: crosshair; mix-blend-mode: multiply; image-rendering: pixelated; touch-action: none; }
+.spectrum-mirror { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 10px; color: var(--muted); font-size: 12px; cursor: pointer; }
+.spectrum-clear { width: 100%; margin-bottom: 10px; }
+.spectrum-status { margin: 0 0 10px; color: var(--muted); font-size: 12px; }

@@ -2,15 +2,20 @@
 from dataclasses import dataclass
 from typing import Any, Callable
 
+import base64
+import io
 import math
 
 import numpy as np
+from PIL import UnidentifiedImageError
 
 from backend.model.brightness import adjust_brightness
 from backend.model.convolution import convolve
 from backend.model.gamma_log import gamma_correction, log_transformation
 from backend.model.geometry import BILINEAR, NEAREST, rotate_image, rotated_shape, scale_image, scaled_shape
+from backend.model.frequency import DFT, FFT, filter_with_mask
 from backend.model.histogram import equalize_histogram
+from backend.model.image_io import load_image
 from backend.model.negative import negative_image
 from backend.model.piecewise_linear import piecewise_linear
 from backend.model.spatial_filters import (
@@ -78,6 +83,15 @@ def _pivot(matrix: np.ndarray, params: Params) -> tuple[float, float]:
     if not (0 <= percent_x <= 100 and 0 <= percent_y <= 100):
         raise ValueError("O pivô deve estar entre 0% e 100% em cada eixo.")
     return percent_x / 100 * (width - 1), percent_y / 100 * (height - 1)
+
+
+def _mask_param(params: Params, name: str) -> np.ndarray:
+    """A máscara do espectro chega como imagem PNG em base64 (sem o prefixo "data:")."""
+    text = _text_param(params, name)
+    try:
+        return load_image(io.BytesIO(base64.b64decode(text, validate=True)))
+    except (ValueError, UnidentifiedImageError, OSError):
+        raise ValueError(f"O parâmetro '{name}' deve ser uma imagem PNG codificada em base64.")
 
 
 def _kernel_param(params: Params, name: str) -> list[list[float]]:
@@ -212,6 +226,16 @@ OPERATIONS: dict[str, Operation] = {
             _number_param(params, "angle"),
             _method_param(params),
             pivot=_pivot(matrix, params),
+        ),
+    ),
+
+    "frequency_filter": Operation(
+        label=lambda params: f"Filtro no espectro ({'DFT' if params['algorithm'] else 'FFT'})",
+        run=lambda matrix, params: filter_with_mask(
+            matrix,
+            _mask_param(params, "mask"),
+            DFT if _number_param(params, "algorithm") else FFT,
+            bool(_number_param(params, "normalize")),
         ),
     ),
 

@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from PIL import UnidentifiedImageError
 from pydantic import BaseModel, Field
 
+from backend.model.frequency import DFT, FFT, spectrum_image, timed_spectrum
 from backend.model.histogram import compute_histogram
 from backend.model.image_io import encode_image, load_image
 from backend.model.sampling import downscale_for_preview
@@ -98,6 +99,18 @@ def create_app(session: EditorSession | None = None) -> FastAPI:
         require_image()
         matrix = session.original if which == "original" else session.current
         return {"counts": compute_histogram(matrix)}
+
+    @app.get("/api/spectrum")
+    def spectrum(algorithm: int = 0):
+        """Imagem do espectro (deslocado, em escala logarítmica) da imagem atual, para a pessoa editar."""
+        require_image()
+        try:
+            values, seconds = timed_spectrum(session.current, DFT if algorithm else FFT)
+        except ValueError as error:
+            raise HTTPException(422, str(error))
+        image = spectrum_image(values)
+        headers = {**NO_CACHE, "X-Spectrum-Size": f"{image.shape[1]}x{image.shape[0]}", "X-Seconds": f"{seconds:.2f}"}
+        return Response(encode_image(image, "PNG"), media_type="image/png", headers=headers)
 
     @app.get("/api/steganography")
     def reveal():
