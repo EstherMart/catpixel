@@ -9,7 +9,7 @@
   Todos os algoritmos são implementados do zero, manipulando diretamente a matriz da imagem.
 </p>
 
-> **Status:** em desenvolvimento. A leitura/gravação de imagens, as operações pontuais (limiarização, negativo, brilho, gama, logaritmo, linear por partes), o histograma e a equalização, a convolução genérica, os filtros de média, gaussiana, mediana, Laplaciano e high-boost, a escala e a rotação (com e sem pivô), a DFT e a FFT próprias com edição do espectro, a esteganografia e a interface web (menus, zoom, histórico, desfazer/refazer) estão prontas. Os demais algoritmos ainda não foram implementados (veja o [Roadmap](#roadmap)).
+> **Status:** em desenvolvimento. A leitura/gravação de imagens, as operações pontuais (limiarização, negativo, brilho, gama, logaritmo, linear por partes), o histograma e a equalização, a convolução genérica, os filtros de média, gaussiana, mediana, Laplaciano e high-boost, a escala e a rotação (com e sem pivô), a DFT e a FFT próprias com edição do espectro, as imagens coloridas (HSI, escala de cinza, chroma-key, sépia e ajustes de cor), a esteganografia e a interface web (menus, zoom, histórico, desfazer/refazer) estão prontas. Os demais algoritmos ainda não foram implementados (veja o [Roadmap](#roadmap)).
 
 ## Sumário
 
@@ -100,18 +100,18 @@ Legenda: ✅ pronto · 🚧 em andamento · ⬜ pendente
 
 | Funcionalidade                                                     | Status |
 | ------------------------------------------------------------------ | ------ |
-| Conversão RGB ↔ HSI                                                | ⬜     |
-| Escala de cinza (média simples e ponderada)                        | ⬜     |
-| Negativo colorido                                                  | ⬜     |
-| Chroma-Key (distância da cor verde e imagem substituta ajustáveis) | ⬜     |
-| Histogramas R, G, B e I                                            | ⬜     |
-| Equalização de histograma colorida (HSI)                           | ⬜     |
-| Ajuste de matiz, saturação e brilho                                | ⬜     |
-| Ajuste de canal (C/R, M/G, Y/B)                                    | ⬜     |
-| Sépia                                                              | ⬜     |
-| Demais processamentos funcionando em imagens coloridas             | ⬜     |
+| Conversão RGB ↔ HSI                                                | ✅     |
+| Escala de cinza (média simples e ponderada)                        | ✅     |
+| Negativo colorido                                                  | ✅     |
+| Chroma-Key (distância da cor verde e imagem substituta ajustáveis) | ✅     |
+| Histogramas R, G, B e I                                            | ✅     |
+| Equalização de histograma colorida (HSI)                           | ✅     |
+| Ajuste de matiz, saturação e brilho                                | ✅     |
+| Ajuste de canal (C/R, M/G, Y/B)                                    | ✅     |
+| Sépia                                                              | ✅     |
+| Demais processamentos funcionando em imagens coloridas             | ✅     |
 
-> **Nota:** hoje o `load_image` do backend converte toda imagem para escala de cinza (matriz 2D). Para as etapas coloridas, ele precisa passar a devolver `(H, W, 3)`.
+> **Nota:** uma imagem colorida é uma matriz `(H, W, 3)` em R, G, B, e uma em tons de cinza é `(H, W)`. O `load_image` escolhe pelo modo do arquivo, e os processamentos de cinza rodam em cada canal das imagens coloridas (veja [docs/implementacoes.md](docs/implementacoes.md#imagens-coloridas)).
 
 ## Roadmap
 
@@ -123,7 +123,7 @@ Legenda: ✅ pronto · 🚧 em andamento · ⬜ pendente
 6. ✅ Escala e rotação com interpolação
 7. ✅ Esteganografia
 8. ✅ Fourier e edição do espectro
-9. ⬜ Imagens coloridas (HSI, chroma-key, sépia etc.)
+9. ✅ Imagens coloridas (HSI, chroma-key, sépia etc.)
 10. 🚧 Interface gráfica integrando tudo (base pronta; cada algoritmo novo ganha um painel)
 
 ## Primeiros passos
@@ -160,7 +160,7 @@ Abra <http://localhost:8765> no navegador. O mesmo servidor entrega a interface 
 Na interface:
 
 1. Clique em **Abrir imagem** ou arraste um arquivo para a janela.
-2. Clique em um botão da barra superior (**Ajustes**, **Filtros**, **Geometria**, **Frequência** ou **Esteganografia**): a lista das operações dele aparece no painel **Parâmetros**, à direita. Escolha uma operação para ver os controles dela e mexa neles; a pré-visualização muda na hora. **Cancelar** volta para a lista. O gráfico do histograma fica acima desse painel.
+2. Clique em um botão da barra superior (**Ajustes**, **Filtros**, **Geometria**, **Frequência**, **Cores** ou **Esteganografia**): a lista das operações dele aparece no painel **Parâmetros**, à direita. Escolha uma operação para ver os controles dela e mexa neles; a pré-visualização muda na hora. **Cancelar** volta para a lista. O gráfico do histograma fica acima desse painel.
 3. Clique em **Aplicar** para gravar a edição no histórico, ou em **Cancelar**.
 4. Use **Ver original** para comparar, o painel **Histórico**, na coluna da direita (ou Ctrl+Z / Ctrl+Shift+Z), para voltar ou refazer, e o menu **Arquivo** para salvar em BMP ou JPG.
 5. Roda do mouse dá zoom e arrastar move a imagem. Duplo clique ajusta à tela.
@@ -201,6 +201,7 @@ catpixel/
 │   │   ├── spatial_filters.py    # média, gaussiana, mediana, Laplaciano e high-boost
 │   │   ├── geometry.py           # escala e rotação (com pivô) com interpolação
 │   │   ├── frequency.py          # DFT, FFT, espectro deslocado e filtro por máscara
+│   │   ├── color.py              # HSI, escala de cinza, ajustes de cor, sépia e chroma-key
 │   │   ├── steganography.py      # esconder e revelar texto (LSB)
 │   │   └── utils/lut.py          # aplica uma tabela de 256 tons à imagem
 │   └── tests/

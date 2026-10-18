@@ -15,9 +15,9 @@ Ao terminar uma funcionalidade, troque o aviso "Ainda não implementado" pelo te
 - **O quê:** abre arquivos BMP, JPG e PNG e salva em BMP ou JPG.
 - **Por quê:** o enunciado exige abrir e salvar nesses formatos e permite biblioteca de terceiros só para isso. O BMP é o formato preferido para salvar, porque o JPG comprime com perdas e cria tons de cinza nas bordas de imagens binárias.
 - **Como:**
-  - `backend/model/image_io.py`: `load_image` usa o Pillow para ler o arquivo e converte para uma matriz numpy `uint8` de formato (altura, largura) em escala de cinza. `encode_image` faz o caminho contrário.
+  - `backend/model/image_io.py`: `load_image` usa o Pillow para ler o arquivo e devolve uma matriz numpy `uint8`: (altura, largura) se o arquivo for em tons de cinza, ou (altura, largura, 3) em R, G, B se for colorido. `encode_image` faz o caminho contrário.
   - `backend/app.py`: `POST /api/open` recebe o arquivo, e `GET /api/save?format=bmp|jpg` devolve o arquivo para download.
-- **Limitação:** tudo é convertido para escala de cinza. Isso precisa mudar para a parte colorida.
+- **Cor e cinza:** o programa guarda cada imagem no formato em que ela veio. Um PNG, JPG ou BMP colorido continua colorido, e um em tons de cinza continua em cinza (inclusive o BMP de 8 bits que o programa grava para imagens cinza). Veja a seção [Imagens coloridas](#imagens-coloridas).
 
 ## Operações pontuais
 
@@ -88,7 +88,7 @@ A função `mean_brightness`, no mesmo arquivo, ainda não é usada por nada.
 
 Esconder é uma operação comum (`"hide_message"`, com o parâmetro de texto `text`), então entra no histórico e pode ser desfeita. O rótulo do histórico não mostra o texto secreto. Revelar devolve texto, não imagem, e por isso tem endpoint próprio: `GET /api/steganography` responde `{"found": bool, "text": str}` e lê a imagem inteira, nunca a prévia reduzida. O botão **Esteganografia**, na barra superior, mostra a operação **Esconder e revelar mensagem**, que abre um painel com um campo de texto, o botão **Esconder** e o botão **Revelar mensagem da imagem**. Não há prévia, porque ela é reduzida e perderia a mensagem.
 
-**Limitações.** Só o BMP guarda a mensagem: o JPG comprime com perdas e apaga os LSBs. Qualquer operação feita depois de esconder (brilho, negativo etc.) também destrói a mensagem, então esconda por último e salve em BMP. Imagens coloridas viram cinza ao abrir (veja [Abrir e salvar imagens](#abrir-e-salvar-imagens)), o que não afeta um BMP cinza salvo por este programa.
+**Limitações.** Só o BMP guarda a mensagem: o JPG comprime com perdas e apaga os LSBs. Qualquer operação feita depois de esconder (brilho, negativo etc.) também destrói a mensagem, então esconda por último e salve em BMP. Em imagem colorida a mensagem usa os três canais (R, G e B de cada pixel), então cabe três vezes mais texto, e o BMP de 24 bits também a guarda sem perdas.
 
 ## Histograma e convolução
 
@@ -263,74 +263,78 @@ Tudo desta seção está em `backend/model/frequency.py` e no botão **Frequênc
 
 ## Imagens coloridas
 
+Uma imagem colorida é uma matriz `uint8` de formato (altura, largura, 3), na ordem R, G, B. O `load_image` olha o modo do arquivo: tons de cinza continuam sendo uma matriz 2D, e qualquer outro modo vira RGB. O código das conversões e dos ajustes está em `backend/model/color.py`, e as fórmulas seguem o Capítulo 6 do livro-texto (equações 6.2-2 a 6.2-7 para RGB ↔ HSI e seção 6.5.5 para a equalização colorida). Os botões estão em **Cores**, na barra superior.
+
+**Como os processamentos de cinza passam a valer para cores.** Cada operação tem uma marca `native` em `backend/operations.py`. Se ela vale `False` (o padrão), `run_operation` roda a mesma operação de cinza uma vez em cada canal (R, G e B) e junta o resultado. É assim que limiarização, negativo, brilho, gama, logaritmo, linear por partes, média, gaussiana, mediana, Laplaciano, high-boost, convolução, escala, rotação e o filtro no espectro funcionam em imagens coloridas, sem repetir código. Duas consequências: a limiarização de uma imagem colorida dá uma imagem com até 8 cores (cada canal é limiarizado), e a operação em três canais leva cerca de três vezes o tempo (o filtro no espectro de uma imagem 1280 × 720 leva uns 9 s). As operações que precisam enxergar a imagem inteira são `native`: a equalização, a esteganografia, a escala de cinza e as operações de cor descritas abaixo. Quem recebe uma imagem em cinza e só faz sentido em cor (sépia, ajuste de canal, matiz e saturação, chroma-key) a promove a colorida com R = G = B, em vez de dar erro.
+
 ### Conversão RGB ↔ HSI
 
-> ⬜ Ainda não implementado.
+**O quê.** O modelo HSI separa a cor em **matiz** H (o ângulo da cor, de 0° a 360°, com 0° no vermelho, 120° no verde e 240° no azul), **saturação** S (de 0, cinza, a 1, cor pura) e **intensidade** I (o brilho, de 0 a 1). De RGB para HSI: `I = (R+G+B)/3`, `S = 1 − 3·min(R,G,B)/(R+G+B)` e `H = θ` se `B ≤ G`, ou `360° − θ` se `B > G`, com `θ = cos⁻¹( ½[(R−G)+(R−B)] / √[(R−G)² + (R−B)(G−B)] )`. De HSI para RGB, as fórmulas mudam conforme o setor do matiz (0° a 120°, 120° a 240° e 240° a 360°), por exemplo `B = I(1−S)`, `R = I[1 + S·cos H / cos(60°−H)]` e `G = 3I − (R+B)` no primeiro setor.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** Em RGB, mudar o brilho ou a cor de uma imagem mexe nos três canais ao mesmo tempo. No HSI, cada ideia tem o seu eixo, e é por isso que o matiz, a saturação, o brilho e a equalização colorida são feitos nele. Os casos de borda têm tratamento: `R+G+B = 0` (preto) dá `S = 0`, uma imagem cinza (`R = G = B`) tem denominador zero em `θ`, então o matiz fica 0 e a saturação 0, o argumento de `cos⁻¹` é limitado a `[−1, 1]` contra erros de arredondamento, e o matiz dá a volta (370° é o mesmo que 10°).
+
+**Como.** `rgb_to_hsi(matrix)` e `hsi_to_rgb(h, s, i)`, em `backend/model/color.py`, calculam todos os pixels de uma vez. A ida e a volta devolvem a imagem com diferença de no máximo 1 nível (nos testes, com imagens aleatórias, a diferença foi 0). A ferramenta de conversão na interface é **Cores → Componentes HSI**, que converte a imagem e mostra o matiz, a saturação ou a intensidade como uma imagem em cinza (H de 0° a 360° vira 0 a 255, e S e I de 0 a 1 viram 0 a 255). A imagem passa a ser em cinza, e desfazer (Ctrl+Z) volta às cores. A conversão de HSI para RGB é usada por dentro nos ajustes e na equalização, e fica disponível como função.
 
 ### Escala de cinza (média simples e ponderada)
 
-> ⬜ Ainda não implementado.
+**O quê.** Converte uma imagem colorida em tons de cinza de dois jeitos. A **média simples** é `(R+G+B)/3`. A **média ponderada** é `0,299·R + 0,587·G + 0,114·B`.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** A média simples trata os três canais igual, mas o olho humano vê o verde bem mais claro que o azul, então a ponderada dá um cinza mais parecido com o que se enxerga (um verde puro fica bem mais claro que um azul puro). O resultado é uma imagem 2D, e todos os processamentos de cinza continuam valendo nela.
+
+**Como.** `to_grayscale(matrix, weighted)`. A operação `"grayscale"` recebe `weighted` (0 ou 1). Se a imagem já for cinza, ela volta igual.
 
 ### Negativo colorido
 
-> ⬜ Ainda não implementado.
+**O quê.** `s = 255 − r` em cada canal: o vermelho vira ciano, o verde vira magenta e o azul vira amarelo, e o branco vira preto.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** Não precisou de código novo: o negativo de cinza roda em cada canal, como todas as outras operações de cinza, e o resultado é o negativo colorido. Aplicar duas vezes devolve a imagem original.
+
+**Como.** É a própria operação `"negative"` (menu **Ajustes → Negativo**), que o despacho por canal estende a imagens coloridas.
 
 ### Chroma-Key
 
-> ⬜ Ainda não implementado.
+**O quê.** Troca os pixels de uma cor (o fundo verde de um estúdio, por exemplo) pelos pixels de outra imagem. A pessoa escolhe a **cor-chave** (verde puro por padrão), a **distância** e a **imagem de fundo**. Um pixel é trocado se `√[(R−Rk)² + (G−Gk)² + (B−Bk)²] ≤ distância`, em que `(Rk, Gk, Bk)` é a cor-chave.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** Um fundo real nunca é um verde exato: há sombras e ruído. A distância diz o quanto uma cor pode diferir da cor-chave para ainda ser trocada. Com 0, só o verde exato é trocado, e valores maiores pegam tons de verde parecidos (a distância máxima, entre preto e branco, é 442). Se nenhuma imagem de fundo for escolhida, os pixels trocados ficam pretos. A imagem de fundo é esticada (interpolação bilinear) ao tamanho da imagem, qualquer que seja o tamanho dela.
+
+**Como.** `chroma_key(matrix, background, key_color, distance)`. A operação `"chroma_key"` recebe `key_r`, `key_g`, `key_b`, `distance` e `background`, que é a imagem de fundo em base64, ou um texto vazio. No navegador, o controle `image-file` lê o arquivo e o reduz a no máximo 1280 pixels de lado antes de enviar, para que cada pré-visualização não carregue megabytes. O seletor de cor usa o controle `color`.
 
 ### Histogramas R, G, B e I
 
-> ⬜ Ainda não implementado.
+**O quê.** Em imagem colorida, o painel de histograma mostra quatro histogramas sobrepostos: R em vermelho, G em verde, B em azul e a intensidade I, em linha branca, com `I = (R+G+B)/3`. Em imagem cinza, continua um histograma só. A legenda **R G B I** aparece abaixo do gráfico, e a **Escala log.** vale para todos.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** Cada canal conta uma história: uma foto com dominante amarela, por exemplo, mostra o histograma do azul deslocado para a esquerda. A sobreposição usa a mistura aditiva (`lighter`), em que R, G e B no mesmo ponto clareiam em direção ao branco.
+
+**Como.** `channel_histograms(matrix)`, em `backend/model/color.py`, usa o `compute_histogram` de cada canal. O endpoint `GET /api/histogram` devolve `counts` (a intensidade, ou o próprio cinza) e `channels` (`{r, g, b}`, que é `null` em imagem cinza). O desenho está em `frontend/js/histogram-panel.js`.
 
 ### Equalização de histograma colorida (HSI)
 
-> ⬜ Ainda não implementado.
+**O quê.** Equaliza o histograma de uma imagem colorida mexendo só no componente de **intensidade** I, e mantém o matiz H e a saturação S.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** Equalizar R, G e B separadamente mudaria as proporções entre os canais e, com elas, as cores da imagem. No HSI, a cor está em H e S e o brilho está em I, então equalizar só I aumenta o contraste sem mudar as cores. Esse é o procedimento da seção 6.5.5 do livro. Pode sobrar alguma diferença de saturação depois, e como o RGB que volta pode sair do intervalo, os valores são limitados a 0 a 255.
+
+**Como.** `equalize_intensity(matrix)` converte para HSI, equaliza I (convertido a 0 a 255) com a mesma tabela de equalização do cinza e converte de volta. A operação `"equalize"` escolhe sozinha: imagem colorida usa o HSI, e imagem cinza usa a equalização de cinza de antes.
 
 ### Ajuste de matiz, saturação e brilho
 
-> ⬜ Ainda não implementado.
+**O quê.** Em **Cores → Matiz, saturação e brilho**, o **matiz** soma graus ao ângulo H (as cores giram: vermelho + 120° é verde), a **saturação** multiplica S (0 deixa cinza e valores maiores deixam as cores mais vivas) e o **brilho** multiplica I.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** Cada controle mexe em um só componente do HSI, e é por isso que o ajuste é feito nesse modelo e não em RGB. Depois da conta, S e I são limitados a 1 e o RGB final a 0 a 255.
+
+**Como.** `adjust_hsi(matrix, hue_shift, saturation_factor, intensity_factor)`. A operação `"hsi_adjust"` recebe `hue` (−180° a 180°), `saturation` e `intensity` (0 a 3). Fatores negativos lançam `ValueError`.
 
 ### Ajuste de canal (C/R, M/G, Y/B)
 
-> ⬜ Ainda não implementado.
+**O quê.** Equilíbrio de cores com três barras de −100 a 100: ciano ↔ vermelho (**C/R**), magenta ↔ verde (**M/G**) e amarelo ↔ azul (**Y/B**). Para a direita soma vermelho, verde ou azul. Para a esquerda soma ciano, magenta ou amarelo.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** Ciano, magenta e amarelo são os complementares de vermelho, verde e azul (`C = 255 − R`, e assim por diante). Aumentar o ciano é o mesmo que diminuir o vermelho, então uma barra por dupla resolve os dois sentidos. O valor em porcentagem é convertido para `valor · 255 / 100` e somado ao canal, com o resultado limitado a 0 e 255.
+
+**Como.** `adjust_channels(matrix, cyan_red, magenta_green, yellow_blue)`. A operação `"channel_adjust"` recebe os três valores. Fora de −100 a 100, lança `ValueError`.
 
 ### Sépia
 
-> ⬜ Ainda não implementado.
+**O quê.** Deixa a imagem numa escala de cinza amarelada, como nas fotografias antigas. Cada cor nova é uma mistura fixa de R, G e B: `R' = 0,393R + 0,769G + 0,189B`, `G' = 0,349R + 0,686G + 0,168B` e `B' = 0,272R + 0,534G + 0,131B`.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** Os coeficientes de R' somam mais que 1 e os de B' somam menos que 1, então o resultado é mais quente que a imagem original, e como as três linhas são parecidas, os canais ficam próximos e a imagem parece "cinza com um tom". Branco vira (255, 255, 239) e preto continua preto. Os valores que passam de 255 são limitados.
+
+**Como.** `sepia(matrix)`. A operação `"sepia"` não tem parâmetros e também funciona numa imagem em cinza, que vira colorida.

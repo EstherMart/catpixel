@@ -319,3 +319,8 @@ input[type="range"]:focus-visible { outline: 2px solid var(--green); outline-off
 .spectrum-mirror { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 10px; color: var(--muted); font-size: 12px; cursor: pointer; }
 .spectrum-clear { width: 100%; margin-bottom: 10px; }
 .spectrum-status { margin: 0 0 10px; color: var(--muted); font-size: 12px; }
+
+/* ---------- legenda do histograma colorido e controles de cor ---------- */
+.histogram-legend { display: flex; justify-content: center; gap: 14px; margin-top: 4px; font-size: 11px; font-weight: 700; }
+.color-key { width: 44px; height: 28px; padding: 0; background: none; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
+.file-name { flex: 1; min-width: 0; overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }

@@ -70,8 +70,8 @@ async function refreshHistogram() {
   if (!state.has_image) return histogram.clear();
   const request = ++histogramRequest;
   try {
-    const counts = await api.histogram(compareSwitch.checked ? "original" : "current");
-    if (request === histogramRequest) histogram.draw(counts);
+    const data = await api.histogram(compareSwitch.checked ? "original" : "current");
+    if (request === histogramRequest) histogram.draw(data);
   } catch (error) {
     showError(error);
   }

@@ -11,7 +11,7 @@ def box(size):
     return [[1] * size for _ in range(size)]
 
 
-def test_convolution_result_size_identity_flat_image_and_known_values():
+def test_convolution():
     for size in (3, 5, 9, 11):
         assert convolve(PHOTO, box(size), size * size).shape == PHOTO.shape  # mesmo tamanho da original
     assert np.array_equal(convolve(PHOTO, IDENTITY_3), PHOTO)
@@ -30,8 +30,6 @@ def test_convolution_result_size_identity_flat_image_and_known_values():
     right_neighbor = [[0, 0, 0], [1, 0, 0], [0, 0, 0]]
     assert convolve(np.array([[0, 0, 100]], dtype=np.uint8), right_neighbor).tolist() == [[0, 100, 100]]  # borda repete o pixel
 
-
-def test_convolution_clipping_normalization_and_invalid_parameters():
     edges = [[0, -1, 0], [-1, 4, -1], [0, -1, 0]]
     normalized = convolve(PHOTO, edges, normalize=True)
     assert int(normalized.min()) == 0 and int(normalized.max()) == 255

@@ -371,7 +371,72 @@ function buildSpectrum(control, body, onInput, context) {
   };
 }
 
-const BUILDERS = { range: buildRange, text: buildText, choice: buildChoice, kernel: buildKernel, spectrum: buildSpectrum };
+// ---------- cor e imagem de fundo ----------
+
+const hexToRgb = (hex) => [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16));
+
+/** Seletor de cor. Envia três parâmetros: `<prefix>_r`, `<prefix>_g` e `<prefix>_b` (0 a 255). */
+function buildColor(control, body, onInput) {
+  const row = el("div", { className: "adjust-row" });
+  const input = el("input", { type: "color", className: "color-key", value: control.value });
+  input.id = uid(control.prefix);
+  input.addEventListener("input", onInput);
+  row.append(labelFor(input, control.label), input);
+  body.append(row);
+
+  return {
+    read() {
+      const [r, g, b] = hexToRgb(input.value);
+      return { [`${control.prefix}_r`]: r, [`${control.prefix}_g`]: g, [`${control.prefix}_b`]: b };
+    },
+    reset: () => (input.value = control.value),
+  };
+}
+
+const MAX_UPLOAD_SIDE = 1280; // a imagem escolhida é reduzida aqui, para cada pré-visualização não levar megabytes
+
+/** Escolha de um arquivo de imagem (ex.: o fundo do chroma-key). Envia o arquivo reduzido, em JPEG base64, ou "" se não houver. */
+function buildImageFile(control, body, onInput, context) {
+  const emptyText = "Nenhuma (os pixels trocados ficam pretos)";
+  const row = el("div", { className: "adjust-row" });
+  const picker = el("input", { type: "file", accept: "image/*", hidden: true });
+  const button = el("button", { className: "button", textContent: "Escolher…", type: "button" });
+  const name = el("span", { className: "file-name", textContent: emptyText });
+  row.append(el("label", { textContent: control.label }), button, name, picker); // o campo fica oculto, mas precisa estar na página
+  body.append(row);
+  let data = "";
+
+  button.addEventListener("click", () => picker.click());
+  picker.addEventListener("change", async () => {
+    const file = picker.files[0];
+    if (!file) return;
+    try {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, MAX_UPLOAD_SIDE / Math.max(bitmap.width, bitmap.height));
+      const canvas = el("canvas", { width: Math.round(bitmap.width * scale), height: Math.round(bitmap.height * scale) });
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      data = canvas.toDataURL("image/jpeg", 0.92).split(",")[1];
+      name.textContent = file.name;
+      onInput();
+    } catch {
+      context.showError(new Error("Não foi possível ler essa imagem."));
+    }
+    picker.value = "";
+  });
+
+  return {
+    read: () => ({ [control.key]: data }),
+    reset() {
+      data = "";
+      name.textContent = emptyText;
+    },
+  };
+}
+
+const BUILDERS = {
+  range: buildRange, text: buildText, choice: buildChoice, kernel: buildKernel, spectrum: buildSpectrum,
+  color: buildColor, "image-file": buildImageFile,
+};
 
 export function buildControl(control, body, onInput, context) {
   return BUILDERS[control.type ?? "range"](control, body, onInput, context);

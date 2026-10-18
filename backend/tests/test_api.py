@@ -15,9 +15,10 @@ def client():
     return TestClient(create_app(EditorSession()))
 
 
-def png_bytes(color=(200, 200, 200), size=(8, 6)) -> bytes:
+def png_bytes(gray=200, size=(8, 6)) -> bytes:
+    """Imagem em cinza (modo L) de um tom só."""
     buffer = io.BytesIO()
-    Image.new("RGB", size, color).save(buffer, format="PNG")
+    Image.new("L", size, gray).save(buffer, format="PNG")
     return buffer.getvalue()
 
 
@@ -26,6 +27,18 @@ def photo_bytes(size=(60, 60)) -> bytes:
     buffer = io.BytesIO()
     Image.fromarray(noise).save(buffer, format="PNG")
     return buffer.getvalue()
+
+
+def color_bytes(size=(40, 40), fmt="PNG") -> bytes:
+    """Imagem colorida aleatória (modo RGB)."""
+    pixels = np.random.default_rng(3).integers(0, 256, size=(size[1], size[0], 3), dtype=np.uint8)
+    buffer = io.BytesIO()
+    Image.fromarray(pixels).save(buffer, format=fmt)
+    return buffer.getvalue()
+
+
+def open_color(client):
+    return client.post("/api/open", files={"file": ("cores.png", color_bytes(), "image/png")})
 
 
 def open_sample(client):
@@ -67,6 +80,12 @@ def test_open_and_save(client):
     assert bmp.content.startswith(b"BM") and "foto_editada.bmp" in bmp.headers["content-disposition"]
     assert client.get("/api/save", params={"format": "jpg"}).content.startswith(b"\xff\xd8")
     assert client.get("/api/save", params={"format": "gif"}).status_code == 400
+    assert state["color"] is False  # cinza continua cinza
+
+    state = open_color(client).json()
+    assert state["color"] is True and (state["width"], state["height"]) == (40, 40)
+    assert current_pixels(client).shape == (40, 40, 3)
+    assert Image.open(io.BytesIO(client.get("/api/save", params={"format": "bmp"}).content)).mode == "RGB"  # BMP guarda a cor
 
 
 def test_apply_preview_history_and_invalid_requests(client):
@@ -178,6 +197,32 @@ def test_histogram_equalization_convolution_spatial_filters_and_geometry(client)
     client.post("/api/open", files={"file": ("grande.png", big.getvalue(), "image/png")})
     assert client.get("/api/spectrum", params={"algorithm": 1}).status_code == 422  # DFT ingênua não aceita imagem grande
 
+    # imagens coloridas
+    open_color(client)
+    histogram = client.get("/api/histogram").json()
+    assert set(histogram["channels"]) == {"r", "g", "b"} and sum(histogram["channels"]["g"]) == 1600 and sum(histogram["counts"]) == 1600
+    assert client.get("/api/histogram").json()["channels"] is not None
+    for op, params, label in (
+        ("equalize", {}, "Equalização de histograma"),
+        ("negative", {}, "Negativo"),
+        ("hsi_adjust", {"hue": 30, "saturation": 1.2, "intensity": 0.9}, "Matiz, saturação e brilho (+30°, S x1.2, I x0.9)"),
+        ("channel_adjust", {"cyan_red": 10, "magenta_green": 0, "yellow_blue": -10}, "Ajuste de canal (C/R +10, M/G +0, Y/B -10)"),
+        ("sepia", {}, "Sépia"),
+        ("chroma_key", {"key_r": 0, "key_g": 255, "key_b": 0, "distance": 120, "background": ""}, "Chroma-key (distância 120)"),
+        ("chroma_key", {"key_r": 0, "key_g": 255, "key_b": 0, "distance": 120, "background": base64.b64encode(color_bytes((7, 5), "JPEG")).decode()}, "Chroma-key (distância 120)"),
+    ):
+        state = apply(client, op, params).json()
+        assert state["history"][-1] == label and state["color"] is True and (state["width"], state["height"]) == (40, 40)
+    assert apply(client, "hsi_component", {"component": 2}).json()["color"] is False  # componente HSI é uma imagem em cinza
+    assert client.get("/api/histogram").json()["channels"] is None
+    open_color(client)
+    assert apply(client, "grayscale", {"weighted": 1}).json()["history"][-1] == "Escala de cinza (média ponderada)"
+    assert apply(client, "sepia").json()["color"] is True  # sépia devolve a cor
+    for op, params in (("hsi_component", {"component": 7}), ("chroma_key", {"key_r": 0, "key_g": 255, "key_b": 0, "distance": 900}),
+                       ("chroma_key", {"key_r": 0, "key_g": 255, "key_b": 0, "distance": 10, "background": "isto não é base64"}),
+                       ("hsi_adjust", {"hue": 0, "saturation": -1, "intensity": 1}), ("grayscale", {})):
+        assert apply(client, op, params).status_code == 422
+
 
 def test_steganography(client):
     open_photo(client)
@@ -191,6 +236,12 @@ def test_steganography(client):
         saved = client.get("/api/save", params={"format": fmt}).content
         client.post("/api/open", files={"file": (f"s.{fmt}", saved, "application/octet-stream")})
         assert client.get("/api/steganography").json()["found"] is expected
+
+    open_color(client)  # imagem colorida: a mensagem usa os três canais e também sobrevive ao BMP
+    apply(client, "hide_message", {"text": "Olá, cores!"})
+    saved = client.get("/api/save", params={"format": "bmp"}).content
+    client.post("/api/open", files={"file": ("s.bmp", saved, "application/octet-stream")})
+    assert client.get("/api/steganography").json() == {"found": True, "text": "Olá, cores!"}
 
     open_sample(client)  # 8x6: não cabe nem o cabeçalho
     for text in ("oi", "", 5):

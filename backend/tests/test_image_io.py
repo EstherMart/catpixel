@@ -17,8 +17,12 @@ def test_images_are_saved_loaded_encoded_and_downscaled_for_preview(tmp_path):
     buffer = io.BytesIO()
     Image.new("RGB", (4, 3), (255, 0, 0)).save(buffer, format="PNG")
     buffer.seek(0)
-    color = load_image(buffer)  # imagem colorida vira matriz 2D uint8
-    assert color.shape == (3, 4) and color.dtype == np.uint8
+    color = load_image(buffer)  # imagem colorida continua colorida: (altura, largura, R-G-B)
+    assert color.shape == (3, 4, 3) and color.dtype == np.uint8 and color[0, 0].tolist() == [255, 0, 0]
+    gray_buffer = io.BytesIO()
+    Image.new("L", (4, 3), 7).save(gray_buffer, format="BMP")
+    gray_buffer.seek(0)
+    assert load_image(gray_buffer).shape == (3, 4)  # cinza continua 2D, mesmo salvo em BMP
 
     assert encode_image(SAMPLE, "PNG").startswith(b"\x89PNG")
     assert encode_image(SAMPLE, "BMP").startswith(b"BM")

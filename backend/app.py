@@ -8,8 +8,8 @@ from fastapi.staticfiles import StaticFiles
 from PIL import UnidentifiedImageError
 from pydantic import BaseModel, Field
 
+from backend.model.color import channel_histograms, intensity
 from backend.model.frequency import DFT, FFT, spectrum_image, timed_spectrum
-from backend.model.histogram import compute_histogram
 from backend.model.image_io import encode_image, load_image
 from backend.model.sampling import downscale_for_preview
 from backend.model.steganography import reveal_message
@@ -81,7 +81,7 @@ def create_app(session: EditorSession | None = None) -> FastAPI:
         # a prévia é reduzida; este cabeçalho diz o tamanho que o resultado final terá, para a tela
         # exibir a prévia no quadro certo quando a operação muda o tamanho (escala, rotação)
         try:
-            height, width = result_shape(request.op, session.current.shape, request.params)
+            height, width = result_shape(request.op, session.current.shape[:2], request.params)
         except ValueError as error:  # a prévia coube, mas a imagem inteira ficaria grande demais
             raise HTTPException(422, str(error))
         headers = {**NO_CACHE, "X-Result-Size": f"{width}x{height}"}
@@ -98,14 +98,16 @@ def create_app(session: EditorSession | None = None) -> FastAPI:
     def histogram(which: str = "current"):
         require_image()
         matrix = session.original if which == "original" else session.current
-        return {"counts": compute_histogram(matrix)}
+        counts = channel_histograms(matrix)
+        # "counts" é sempre a intensidade (o próprio cinza, numa imagem em cinza); "channels" só existe em imagem colorida
+        return {"counts": counts["i"], "channels": {name: counts[name] for name in "rgb"} if matrix.ndim == 3 else None}
 
     @app.get("/api/spectrum")
     def spectrum(algorithm: int = 0):
         """Imagem do espectro (deslocado, em escala logarítmica) da imagem atual, para a pessoa editar."""
         require_image()
         try:
-            values, seconds = timed_spectrum(session.current, DFT if algorithm else FFT)
+            values, seconds = timed_spectrum(intensity(session.current), DFT if algorithm else FFT)  # em cor, a intensidade
         except ValueError as error:
             raise HTTPException(422, str(error))
         image = spectrum_image(values)

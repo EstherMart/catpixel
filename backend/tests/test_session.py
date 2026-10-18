@@ -15,7 +15,7 @@ def session():
     return session
 
 
-def test_history_commit_undo_redo_and_discarding_redo_steps(session):
+def test_session_history(session):
     assert session.state()["history"] == ["Imagem original"]
     assert session.state()["width"] == 3 and session.state()["height"] == 2
 
@@ -31,12 +31,10 @@ def test_history_commit_undo_redo_and_discarding_redo_steps(session):
     session.commit("B", matrix_of(30))  # editar depois de desfazer descarta o passo refazível
     assert session.state()["history"] == ["Imagem original", "B"]
 
-
-def test_reset_jump_and_state_without_image(session):
-    session.commit("A", matrix_of(20))
+    session.commit("C", matrix_of(40))
     session.reset()
     assert np.array_equal(session.current, session.original)
-    assert len(session.state()["history"]) == 2  # voltar à original mantém o histórico
+    assert len(session.state()["history"]) == 3  # voltar à original mantém o histórico
     with pytest.raises(IndexError):
         session.jump_to(5)
     assert EditorSession().state()["has_image"] is False

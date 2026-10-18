@@ -53,9 +53,12 @@ export const api = {
     return { blob: await response.blob(), width, height, seconds: response.headers.get("X-Seconds") };
   },
 
-  /** Contagem de pixels por intensidade (256 valores) da imagem atual ou da original. */
+  /**
+   * Histogramas da imagem atual ou da original: { counts, channels }. `counts` tem 256 contagens da
+   * intensidade, e `channels` ({ r, g, b }) só existe em imagem colorida.
+   */
   async histogram(which = "current") {
-    return (await (await request(`/api/histogram?which=${which}`)).json()).counts;
+    return (await request(`/api/histogram?which=${which}`)).json();
   },
 
   /** Texto escondido na imagem atual, ou null se não houver. */

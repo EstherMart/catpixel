@@ -13,6 +13,7 @@ export const GROUPS = {
   filters: "Filtros",
   geometry: "Geometria",
   frequency: "Frequência",
+  color: "Cores",
   hide: "Esteganografia",
 };
 
@@ -41,7 +42,7 @@ export const ADJUSTMENTS = [
     op: "negative",
     group: "tones",
     title: "Negativo",
-    hint: "Inverte as intensidades da imagem.",
+    hint: "Inverte as intensidades da imagem. Em imagem colorida, inverte cada canal (R, G e B), o que dá o negativo colorido.",
     controls: [],
   },
 
@@ -234,6 +235,76 @@ export const ADJUSTMENTS = [
         type: "choice", key: "normalize", label: "Resultado", value: 0,
         options: [{ label: "Cortar em 0 a 255", value: 0 }, { label: "Normalizar (mín a máx)", value: 1 }],
       },
+    ],
+  },
+
+  {
+    op: "grayscale",
+    group: "color",
+    title: "Escala de cinza",
+    hint: "Converte a imagem colorida para tons de cinza. A média simples dá o mesmo peso a R, G e B. A ponderada (0,299·R + 0,587·G + 0,114·B) imita o olho, que vê o verde mais claro que o azul.",
+    controls: [
+      {
+        type: "choice", key: "weighted", label: "Média", value: 1,
+        options: [{ label: "Simples", value: 0 }, { label: "Ponderada", value: 1 }],
+      },
+    ],
+  },
+
+  {
+    op: "hsi_component",
+    group: "color",
+    title: "Componentes HSI",
+    hint: "Converte de RGB para HSI (matiz, saturação e intensidade) e mostra um componente como imagem em cinza. A imagem passa a ser em cinza: desfaça (Ctrl+Z) para voltar às cores.",
+    controls: [
+      {
+        type: "choice", key: "component", label: "Componente", value: 2,
+        options: [{ label: "Matiz (H)", value: 0 }, { label: "Saturação (S)", value: 1 }, { label: "Intensidade (I)", value: 2 }],
+      },
+    ],
+  },
+
+  {
+    op: "hsi_adjust",
+    group: "color",
+    title: "Matiz, saturação e brilho",
+    hint: "Ajusta a cor no modelo HSI: o matiz gira as cores (soma graus), a saturação deixa as cores mais vivas ou mais cinzas, e o brilho multiplica a intensidade.",
+    controls: [
+      { key: "hue", label: "Matiz (°)", min: -180, max: 180, step: 1, value: 0 },
+      { key: "saturation", label: "Saturação ×", min: 0, max: 3, step: 0.05, value: 1 },
+      { key: "intensity", label: "Brilho ×", min: 0, max: 3, step: 0.05, value: 1 },
+    ],
+  },
+
+  {
+    op: "channel_adjust",
+    group: "color",
+    title: "Ajuste de canal",
+    hint: "Equilíbrio de cores. Cada barra vai de uma cor à sua oposta: para a direita soma vermelho, verde ou azul, e para a esquerda soma ciano, magenta ou amarelo.",
+    controls: [
+      { key: "cyan_red", label: "C ↔ R", min: -100, max: 100, step: 1, value: 0 },
+      { key: "magenta_green", label: "M ↔ G", min: -100, max: 100, step: 1, value: 0 },
+      { key: "yellow_blue", label: "Y ↔ B", min: -100, max: 100, step: 1, value: 0 },
+    ],
+  },
+
+  {
+    op: "sepia",
+    group: "color",
+    title: "Sépia",
+    hint: "Deixa a imagem em uma escala de cinza amarelada, como nas fotografias antigas.",
+    controls: [],
+  },
+
+  {
+    op: "chroma_key",
+    group: "color",
+    title: "Chroma-key",
+    hint: "Troca pela imagem de fundo os pixels parecidos com a cor-chave (verde, por padrão). A distância é o quanto uma cor pode diferir da cor-chave para ser trocada: 0 troca só o verde exato, e valores maiores trocam também tons parecidos. Sem imagem de fundo, os pixels trocados ficam pretos.",
+    controls: [
+      { type: "color", prefix: "key", label: "Cor-chave", value: "#00ff00" },
+      { key: "distance", label: "Distância", min: 0, max: 442, step: 1, value: 120 },
+      { type: "image-file", key: "background", label: "Fundo" },
     ],
   },
 

@@ -61,13 +61,14 @@ class EditorSession:
     def state(self) -> dict:
         if not self.has_image:
             return {"has_image": False, "version": self.version}
-        height, width = self.current.shape
+        height, width = self.current.shape[:2]
         return {
             "has_image": True,
             "version": self.version,
             "name": self.name,
             "width": width,
             "height": height,
+            "color": self.current.ndim == 3,
             "history": [step.label for step in self._steps],
             "index": self._index,
         }

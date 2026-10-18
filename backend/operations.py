@@ -10,6 +10,16 @@ import numpy as np
 from PIL import UnidentifiedImageError
 
 from backend.model.brightness import adjust_brightness
+from backend.model.color import (
+    HSI_COMPONENTS,
+    adjust_channels,
+    adjust_hsi,
+    chroma_key,
+    equalize_intensity,
+    hsi_component,
+    sepia,
+    to_grayscale,
+)
 from backend.model.convolution import convolve
 from backend.model.gamma_log import gamma_correction, log_transformation
 from backend.model.geometry import BILINEAR, NEAREST, rotate_image, rotated_shape, scale_image, scaled_shape
@@ -37,6 +47,9 @@ class Operation:
     run: Callable[[np.ndarray, Params], np.ndarray]
     # (altura, largura) do resultado, para operações que mudam o tamanho da imagem; None = mesmo tamanho
     result_shape: Callable[[tuple[int, int], Params], tuple[int, int]] | None = None
+    # False: `run` só conhece imagens cinza, e numa imagem colorida roda uma vez em cada canal (R, G e B).
+    # True: `run` recebe a imagem como ela é (cinza ou colorida) e decide o que fazer.
+    native: bool = False
 
 
 def _int_param(params: Params, name: str) -> int:
@@ -86,12 +99,28 @@ def _pivot(matrix: np.ndarray, params: Params) -> tuple[float, float]:
 
 
 def _mask_param(params: Params, name: str) -> np.ndarray:
-    """A máscara do espectro chega como imagem PNG em base64 (sem o prefixo "data:")."""
+    """Uma imagem (PNG, JPG ou BMP) chega em base64, sem o prefixo "data:". Ex.: a máscara do espectro."""
     text = _text_param(params, name)
     try:
         return load_image(io.BytesIO(base64.b64decode(text, validate=True)))
     except (ValueError, UnidentifiedImageError, OSError):
-        raise ValueError(f"O parâmetro '{name}' deve ser uma imagem PNG codificada em base64.")
+        raise ValueError(f"O parâmetro '{name}' deve ser uma imagem codificada em base64.")
+
+
+def _optional_image_param(params: Params, name: str) -> np.ndarray | None:
+    """Como `_mask_param`, mas o texto vazio ou ausente significa "nenhuma imagem"."""
+    return _mask_param(params, name) if params.get(name) else None
+
+
+HSI_NAMES = {"hue": "matiz", "saturation": "saturação", "intensity": "intensidade"}
+
+
+def _hsi_component_param(params: Params) -> str:
+    """O navegador manda 0 (matiz), 1 (saturação) ou 2 (intensidade)."""
+    index = _int_param(params, "component")
+    if not 0 <= index < len(HSI_COMPONENTS):
+        raise ValueError("O componente HSI deve ser 0, 1 ou 2.")
+    return HSI_COMPONENTS[index]
 
 
 def _kernel_param(params: Params, name: str) -> list[list[float]]:
@@ -146,7 +175,9 @@ OPERATIONS: dict[str, Operation] = {
 
     "equalize": Operation(
         label=lambda params: "Equalização de histograma",
-        run=lambda matrix, params: equalize_histogram(matrix),
+        # em imagem colorida, equaliza só a intensidade (HSI), para não mudar as cores
+        run=lambda matrix, params: equalize_intensity(matrix) if matrix.ndim == 3 else equalize_histogram(matrix),
+        native=True,
     ),
 
     "convolution": Operation(
@@ -242,6 +273,57 @@ OPERATIONS: dict[str, Operation] = {
     "hide_message": Operation(
         label=lambda params: "Esteganografia (mensagem escondida)",  # o texto secreto não vai para o histórico
         run=lambda matrix, params: hide_message(matrix, _text_param(params, "text")),
+        native=True,  # os bits são escondidos em todos os valores da imagem de uma vez, e não canal a canal
+    ),
+
+    "grayscale": Operation(
+        label=lambda params: f"Escala de cinza ({'média ponderada' if params['weighted'] else 'média simples'})",
+        run=lambda matrix, params: to_grayscale(matrix, bool(_number_param(params, "weighted"))),
+        native=True,
+    ),
+
+    "hsi_component": Operation(
+        label=lambda params: f"Componente HSI ({HSI_NAMES[HSI_COMPONENTS[int(params['component'])]]})",
+        run=lambda matrix, params: hsi_component(matrix, _hsi_component_param(params)),
+        native=True,
+    ),
+
+    "hsi_adjust": Operation(
+        label=lambda params: f"Matiz, saturação e brilho ({params['hue']:+g}°, S x{params['saturation']:g}, I x{params['intensity']:g})",
+        run=lambda matrix, params: adjust_hsi(
+            matrix, _number_param(params, "hue"), _number_param(params, "saturation"), _number_param(params, "intensity")
+        ),
+        native=True,
+    ),
+
+    "channel_adjust": Operation(
+        label=lambda params: (
+            f"Ajuste de canal (C/R {params['cyan_red']:+g}, M/G {params['magenta_green']:+g}, Y/B {params['yellow_blue']:+g})"
+        ),
+        run=lambda matrix, params: adjust_channels(
+            matrix,
+            _number_param(params, "cyan_red"),
+            _number_param(params, "magenta_green"),
+            _number_param(params, "yellow_blue"),
+        ),
+        native=True,
+    ),
+
+    "sepia": Operation(
+        label=lambda params: "Sépia",
+        run=lambda matrix, params: sepia(matrix),
+        native=True,
+    ),
+
+    "chroma_key": Operation(
+        label=lambda params: f"Chroma-key (distância {params['distance']:g})",
+        run=lambda matrix, params: chroma_key(
+            matrix,
+            _optional_image_param(params, "background"),
+            (_number_param(params, "key_r"), _number_param(params, "key_g"), _number_param(params, "key_b")),
+            _number_param(params, "distance"),
+        ),
+        native=True,
     ),
 }
 
@@ -251,7 +333,11 @@ def run_operation(name: str, matrix: np.ndarray, params: Params) -> tuple[str, n
     if name not in OPERATIONS:
         raise KeyError(name)
     operation = OPERATIONS[name]
-    result = operation.run(matrix, params)  # valida os parâmetros antes de montar o rótulo
+    if matrix.ndim == 3 and not operation.native:
+        # imagem colorida: o mesmo processamento de cinza em cada canal. Valida os parâmetros antes do rótulo
+        result = np.stack([operation.run(matrix[:, :, channel], params) for channel in range(3)], axis=-1)
+    else:
+        result = operation.run(matrix, params)
     return operation.label(params), result
 
 

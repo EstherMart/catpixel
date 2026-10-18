@@ -21,6 +21,6 @@ def test_hide_reveal_and_invalid_input():
     assert reveal_message(hide_message(matrix, full)) == full  # cabe exatamente
 
     for invalid in (lambda: hide_message(matrix, "a" * (capacity_bytes(matrix) + 1)), lambda: hide_message(PHOTO, ""),
-                    lambda: hide_message(np.zeros((9, 9, 3), dtype=np.uint8), "x")):
+                    lambda: hide_message(np.zeros((9, 9, 3, 1), dtype=np.uint8), "x")):
         with pytest.raises(ValueError):
             invalid()
