@@ -6,7 +6,7 @@ Cada funcionalidade responde a três perguntas:
 - **Por quê:** a razão de existir e as decisões de projeto.
 - **Como:** o algoritmo, os arquivos e os parâmetros.
 
-Ao terminar uma funcionalidade, troque o aviso "Ainda não implementado" pelo texto dela e marque ✅ na tabela de [Funcionalidades](../README.md#funcionalidades). Os passos para criar uma funcionalidade estão em [novas-funcionalidades.md](novas-funcionalidades.md).
+As funcionalidades que ainda não existem têm o aviso "Ainda não implementado". Ao terminar uma, troque o aviso pelo texto dela e acrescente-a à lista de [Funcionalidades](../README.md#funcionalidades) (se ela era uma das citadas como pendentes no fim dessa lista, tire-a de lá). Os passos para criar uma funcionalidade estão em [novas-funcionalidades.md](novas-funcionalidades.md).
 
 ## Base
 

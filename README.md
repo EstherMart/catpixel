@@ -5,180 +5,127 @@
 <h1 align="center">CatPixel</h1>
 
 <p align="center">
-  Processador de imagens com interface web: front-end em JavaScript e algoritmos em Python (FastAPI).<br>
-  Todos os algoritmos são implementados do zero, manipulando diretamente a matriz da imagem.
+  Editor de imagens com interface web, feito para estudar processamento de imagens.<br>
+  Os algoritmos são escritos do zero em Python (NumPy), manipulando diretamente a matriz da imagem.
 </p>
-
-> **Status:** em desenvolvimento. A leitura/gravação de imagens, as operações pontuais (limiarização, negativo, brilho, gama, logaritmo, linear por partes), o histograma e a equalização, a convolução genérica, os filtros de média, gaussiana, mediana, Laplaciano e high-boost, a escala e a rotação (com e sem pivô), a DFT e a FFT próprias com edição do espectro, as imagens coloridas (HSI, escala de cinza, chroma-key, sépia e ajustes de cor), a esteganografia e a interface web (menus, zoom, histórico, desfazer/refazer) estão prontas. Os demais algoritmos ainda não foram implementados (veja o [Roadmap](#roadmap)).
 
 ## Sumário
 
 - [Sobre o projeto](#sobre-o-projeto)
-- [Como rodar](#como-rodar)
 - [Funcionalidades](#funcionalidades)
-- [Roadmap](#roadmap)
-- [Primeiros passos](#primeiros-passos)
-- [Uso](#uso)
+- [Como rodar](#como-rodar)
+- [Usando a interface](#usando-a-interface)
+- [Usando os algoritmos sem a interface](#usando-os-algoritmos-sem-a-interface)
 - [Testes](#testes)
 - [Estrutura do projeto](#estrutura-do-projeto)
-- [Regras do projeto](#regras-do-projeto)
-- [Contribuindo](#contribuindo)
-- [Licença](#licença)
+- [Princípios do projeto](#princípios-do-projeto)
+- [Documentação e contribuição](#documentação-e-contribuição)
 
 ## Sobre o projeto
 
-O CatPixel é um trabalho da disciplina de Processamento de Imagens. O objetivo é um programa com interface gráfica simples, para que uma pessoa sem experiência edite imagens salvas no próprio computador.
+O CatPixel nasceu como trabalho da disciplina de Processamento de Imagens. A ideia é ter um programa com interface simples, para que uma pessoa sem experiência edite imagens salvas no próprio computador, e ao mesmo tempo código legível, onde cada técnica clássica aparece escrita de forma direta, sem biblioteca de processamento de imagens.
 
-## Como rodar
-
-Na raiz do projeto:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate          # no Windows: .venv\Scripts\activate
-pip install -r requirements/requirements.txt
-uvicorn backend.app:app --reload --port 8765
-```
-
-Abra <http://localhost:8765> no navegador. Para parar o servidor, use `Ctrl+C`. Nas próximas vezes, basta ativar o ambiente (`source .venv/bin/activate`) e rodar o `uvicorn`.
+Ele abre e salva imagens BMP, JPG e PNG, em tons de cinza ou coloridas. A interface roda no navegador, e o servidor (FastAPI) roda na sua máquina.
 
 ## Funcionalidades
 
-Legenda: ✅ pronto · 🚧 em andamento · ⬜ pendente
+Operações pontuais
 
-### Base
+- Limiarização, negativo, brilho, potência (correção de gama), logaritmo e função linear definida por partes.
+- Exibição do histograma e equalização de histograma.
+- Esteganografia: esconde e revela um texto nos bits menos significativos dos pixels.
 
-| Funcionalidade            | Status |
-| ------------------------- | ------ |
-| Abrir imagens (BMP, JPG)  | ✅     |
-| Salvar imagens (BMP, JPG) | ✅     |
-| Interface gráfica (web)   | ✅     |
+Filtros espaciais
 
-### Trabalho 1 — Operações pontuais, histograma e convolução
+- Convolução com filtro quadrado de dimensão ímpar (de 3x3 até 11x11), com grade de valores editável, modelos prontos e divisor.
+- Suavização pela média e gaussiana (média ponderada), filtro da mediana.
+- Aguçamento por Laplaciano e por high-boost.
 
-| Funcionalidade                                                                      | Status |
-| ----------------------------------------------------------------------------------- | ------ |
-| Limiarização                                                                        | ✅     |
-| Negativo                                                                            | ✅     |
-| Brilho                                                                              | ✅     |
-| Potência (correção de gama) e logaritmo                                             | ✅     |
-| Linear definida por partes                                                          | ✅     |
-| Esteganografia                                                                      | ✅     |
-| Exibição do histograma                                                              | ✅     |
-| Equalização de histograma                                                           | ✅     |
-| Filtro genérico por convolução (3x3 até, no mínimo, 9x9, mesmo tamanho da original) | ✅     |
+Transformações geométricas
 
-### Filtros espaciais
+- Escala e rotação, com interpolação pelo vizinho mais próximo ou bilinear.
+- Rotação em torno de um pivô escolhido.
 
-| Funcionalidade                                        | Status |
-| ----------------------------------------------------- | ------ |
-| Suavização pela média (simples e ponderada/Gaussiana) | ✅     |
-| Filtro da mediana                                     | ✅     |
-| Aguçamento por Laplaciano                             | ✅     |
-| Aguçamento High-Boost                                 | ✅     |
-| Sobel X e Y (com normalização para exibição)          | ⬜     |
-| Detecção de bordas pela magnitude do gradiente        | ⬜     |
+Domínio da frequência
 
-### Transformações geométricas
+- Transformada discreta de Fourier (DFT) e transformada rápida (FFT radix-2), ambas implementadas no projeto, sem `numpy.fft`.
+- Espectro deslocado na tela, com um pincel (preto, branco ou cinza, duro ou suave) para editá-lo, e transformada inversa para obter a imagem filtrada.
 
-| Funcionalidade                            | Status |
-| ----------------------------------------- | ------ |
-| Escala (vizinho mais próximo e bilinear)  | ✅     |
-| Rotação (vizinho mais próximo e bilinear) | ✅     |
-| Rotação com pivô especificado             | ✅     |
+Imagens coloridas
 
-### Domínio da frequência
+- Conversão RGB para HSI (e de volta) e escala de cinza por média simples ou ponderada.
+- Negativo colorido, sépia, chroma-key (com a distância da cor e a imagem de fundo ajustáveis).
+- Ajuste de matiz, saturação e brilho, e ajuste de canal (ciano/vermelho, magenta/verde, amarelo/azul).
+- Histogramas de R, G, B e intensidade, e equalização de histograma pelo componente de intensidade (HSI).
+- Todos os processamentos de tons de cinza também funcionam em imagens coloridas.
 
-| Funcionalidade                                                            | Status |
-| ------------------------------------------------------------------------- | ------ |
-| Transformada Discreta de Fourier (própria)                                | ✅     |
-| Transformada Rápida (FFT)                                                 | ✅     |
-| Espectro deslocado com edição pelo usuário (pincel preto, branco e suave) | ✅     |
-| Transformada inversa a partir do espectro editado                         | ✅     |
+Interface
 
-### Imagens coloridas
+- Pré-visualização ao vivo enquanto os controles são ajustados, histórico com desfazer e refazer, comparação com a original, zoom e arrastar, e histograma sempre visível.
 
-| Funcionalidade                                                     | Status |
-| ------------------------------------------------------------------ | ------ |
-| Conversão RGB ↔ HSI                                                | ✅     |
-| Escala de cinza (média simples e ponderada)                        | ✅     |
-| Negativo colorido                                                  | ✅     |
-| Chroma-Key (distância da cor verde e imagem substituta ajustáveis) | ✅     |
-| Histogramas R, G, B e I                                            | ✅     |
-| Equalização de histograma colorida (HSI)                           | ✅     |
-| Ajuste de matiz, saturação e brilho                                | ✅     |
-| Ajuste de canal (C/R, M/G, Y/B)                                    | ✅     |
-| Sépia                                                              | ✅     |
-| Demais processamentos funcionando em imagens coloridas             | ✅     |
+Ainda não estão implementados o filtro de Sobel (X e Y) e a magnitude do gradiente.
 
-> **Nota:** uma imagem colorida é uma matriz `(H, W, 3)` em R, G, B, e uma em tons de cinza é `(H, W)`. O `load_image` escolhe pelo modo do arquivo, e os processamentos de cinza rodam em cada canal das imagens coloridas (veja [docs/implementacoes.md](docs/implementacoes.md#imagens-coloridas)).
+## Como rodar
 
-## Roadmap
-
-1. ✅ Entrada e saída de imagens
-2. ✅ Limiarização
-3. ✅ Demais operações pontuais (negativo, brilho, gama, linear por partes)
-4. ✅ Histograma e equalização
-5. 🚧 Convolução genérica e filtros espaciais (prontos: média, gaussiana, mediana, Laplaciano e high-boost; faltam Sobel e gradiente)
-6. ✅ Escala e rotação com interpolação
-7. ✅ Esteganografia
-8. ✅ Fourier e edição do espectro
-9. ✅ Imagens coloridas (HSI, chroma-key, sépia etc.)
-10. 🚧 Interface gráfica integrando tudo (base pronta; cada algoritmo novo ganha um painel)
-
-## Primeiros passos
-
-### Pré-requisitos
-
-- Python 3.10 ou superior
-- Um navegador moderno (Chrome, Firefox ou Edge)
-
-### Instalação
+Pré-requisitos: Python 3.10 ou superior e um navegador moderno (Chrome, Firefox ou Edge).
 
 ```bash
-git clone <url-do-repositorio>
+git clone https://github.com/EstherMart/catpixel.git
 cd catpixel
 
 python3 -m venv .venv
-source .venv/bin/activate
-
+source .venv/bin/activate          # no Windows: .venv\Scripts\activate
 pip install -r requirements/requirements.txt
-```
 
-As dependências são `numpy`, `Pillow` (só para abrir e salvar arquivos), `FastAPI`, `uvicorn` e `python-multipart`. Para rodar os testes, use `requirements/requirements-dev.txt`.
-
-## Uso
-
-Inicie o servidor a partir da raiz do projeto:
-
-```bash
 uvicorn backend.app:app --reload --port 8765
 ```
 
-Abra <http://localhost:8765> no navegador. O mesmo servidor entrega a interface e a API (a documentação automática da API fica em `/docs`).
+Abra <http://localhost:8765> no navegador. Para parar o servidor, use `Ctrl+C`. Nas próximas vezes, basta ativar o ambiente e rodar o `uvicorn`.
 
-Na interface:
+As dependências são `numpy`, `Pillow` (só para abrir e salvar arquivos), `FastAPI`, `uvicorn` e `python-multipart`.
 
-1. Clique em **Abrir imagem** ou arraste um arquivo para a janela.
-2. Clique em um botão da barra superior (**Ajustes**, **Filtros**, **Geometria**, **Frequência**, **Cores** ou **Esteganografia**): a lista das operações dele aparece no painel **Parâmetros**, à direita. Escolha uma operação para ver os controles dela e mexa neles; a pré-visualização muda na hora. **Cancelar** volta para a lista. O gráfico do histograma fica acima desse painel.
-3. Clique em **Aplicar** para gravar a edição no histórico, ou em **Cancelar**.
-4. Use **Ver original** para comparar, o painel **Histórico**, na coluna da direita (ou Ctrl+Z / Ctrl+Shift+Z), para voltar ou refazer, e o menu **Arquivo** para salvar em BMP ou JPG.
-5. Roda do mouse dá zoom e arrastar move a imagem. Duplo clique ajusta à tela.
+## Usando a interface
 
-O servidor guarda uma única imagem em edição, pensada para uso local por uma pessoa.
+1. Clique em **Abrir imagem** ou arraste um arquivo para a janela. A pasta [imagens/](imagens/) tem fotos de exemplo.
+2. Clique em um botão da barra superior (**Ajustes**, **Filtros**, **Geometria**, **Frequência**, **Cores** ou **Esteganografia**). A lista das operações dele aparece no painel **Parâmetros**, à direita.
+3. Escolha uma operação e mexa nos controles dela: a pré-visualização muda na hora. Clique em **Aplicar** para gravar a edição no histórico, ou em **Cancelar** para voltar à lista.
+4. Use **Ver original** para comparar, o painel **Histórico** (ou Ctrl+Z e Ctrl+Shift+Z) para desfazer e refazer, e o menu **Arquivo** para salvar em BMP ou JPG.
+5. A roda do mouse dá zoom, arrastar move a imagem e o duplo clique ajusta à tela.
 
-Os algoritmos de `backend/model/` também funcionam sem a interface:
+Dicas:
+
+- Prefira salvar em BMP. O JPG comprime com perdas, o que cria tons de cinza nas bordas de imagens binárias e apaga mensagens escondidas pela esteganografia.
+- Editar o espectro: abra **Frequência**, escolha **Espectro de Fourier** e pinte sobre ele. Preto elimina as frequências pintadas, branco as mantém e cinza as atenua. **Aplicar filtro** calcula a transformada inversa. O botão do meio do mouse move a imagem enquanto você pinta.
+- O servidor guarda uma única imagem em edição, pensada para uso local por uma pessoa.
+
+A documentação automática da API fica em <http://localhost:8765/docs>.
+
+## Usando os algoritmos sem a interface
+
+Os algoritmos de `backend/model/` não dependem da parte web e trabalham com matrizes NumPy `uint8`: `(altura, largura)` para tons de cinza e `(altura, largura, 3)` em R, G, B para imagens coloridas.
 
 ```python
 from backend.model.image_io import load_image, save_image
+from backend.model.spatial_filters import median_filter
 from backend.model.thresholding import threshold_image
 
-imagem = load_image("imagens/GatoHalloween.jpg")   # matriz 2D uint8 (H, W)
-binaria = threshold_image(imagem, 128)             # pixels >= 128 viram 255, os demais 0
+imagem = load_image("imagens/GatoHalloween.jpg")        # colorida: (H, W, 3)
+cinza = imagem.mean(axis=2).astype("uint8")             # ou use backend.model.color.to_grayscale
+suave = median_filter(cinza, 5)                         # mediana com vizinhança 5x5
+binaria = threshold_image(suave, 128)                   # pixels >= 128 viram 255, os demais 0
 save_image(binaria, "saida.bmp")
 ```
 
-Salve o resultado em BMP. O JPG comprime com perdas e cria tons de cinza nas bordas.
+As funções de tons de cinza recebem uma matriz 2D. Para aplicar uma delas a uma imagem colorida, rode-a em cada canal, como a interface faz.
+
+## Testes
+
+```bash
+pip install -r requirements/requirements-dev.txt
+python -m pytest
+```
+
+A suíte é pequena e roda em poucos segundos. Cada teste cobre uma funcionalidade e reúne várias verificações.
 
 ## Estrutura do projeto
 
@@ -212,30 +159,21 @@ catpixel/
 │       ├── main.js               # liga tudo
 │       ├── api.js                # chamadas à API
 │       ├── stage-view.js         # área da imagem: zoom e arrastar
-│       ├── adjustments-panel.js  # painel de ajustes
-│       ├── controls.js           # controles dos cartões (slider, texto, lista, grade do filtro)
+│       ├── adjustments-panel.js  # lista de operações e painel de parâmetros
+│       ├── controls.js           # controles (slider, texto, lista, grade do filtro, espectro, cor, arquivo)
 │       ├── histogram-panel.js    # gráfico do histograma
-│       ├── history-panel.js
-│       ├── menubar.js
-│       └── toast.js
-├── docs/                         # como cada funcionalidade foi feita e como adicionar novas
+│       ├── history-panel.js      # histórico
+│       ├── menubar.js            # barra superior
+│       └── toast.js              # avisos
+├── docs/                         # como cada funcionalidade foi feita
 ├── requirements/
 ├── imagens/                      # imagens de exemplo
 └── assets/                       # logos
 ```
 
-### Como adicionar um novo algoritmo
+## Princípios do projeto
 
-O passo a passo completo está em [docs/novas-funcionalidades.md](docs/novas-funcionalidades.md), e a explicação de cada funcionalidade (o quê, por quê e como) em [docs/implementacoes.md](docs/implementacoes.md). Resumo:
-
-1. Escreva a função em `backend/model/` e o teste em `backend/tests/`.
-2. Registre a operação em `backend/operations.py`.
-3. Adicione uma entrada em `ADJUSTMENTS`, em `frontend/js/adjustments-panel.js`, com os controles dela.
-
-## Regras do projeto
-
-- O Pillow é usado **somente** para abrir e salvar arquivos.
-- Nenhuma biblioteca de processamento de imagens pode ser usada nos algoritmos. Eles manipulam a matriz da imagem diretamente.
-- Bibliotecas de álgebra linear (como o NumPy) são permitidas, mas não suas funções que sejam, elas próprias, requisito do trabalho.
-- Se a DFT for implementada de forma ingênua, o programa também deve oferecer uma FFT, para que imagens grandes sejam viáveis. Aqui a FFT é própria (radix-2, em `backend/model/frequency.py`), então não há dependência de `numpy.fft`; ele só é usado nos testes, como referência.
-- Ao exibir o resultado de filtros que geram valores negativos ou acima de 255, normalize os valores apenas para exibição.
+- Os algoritmos são escritos no projeto e manipulam a matriz da imagem diretamente. Não se usa biblioteca de processamento de imagens nem funções prontas que façam a própria técnica (convolução, FFT, interpolação etc.).
+- O Pillow só abre e salva arquivos, em `backend/model/image_io.py`. O NumPy serve para álgebra e operações em bloco sobre matrizes. O `numpy.fft` aparece apenas nos testes, como referência para conferir a DFT e a FFT próprias.
+- O código em `backend/model/` não importa nada de web, e cada operação nova é registrada em um único catálogo (`backend/operations.py`).
+- Filtros que geram valores negativos ou acima de 255 (como o Laplaciano) têm o resultado normalizado apenas para exibição.
