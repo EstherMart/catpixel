@@ -11,8 +11,15 @@ import { buildControl } from "./controls.js?v=5";
 export const GROUPS = {
   tones: "Ajustes",
   filters: "Filtros",
+  geometry: "Geometria",
   hide: "Esteganografia",
 };
+
+/** Escolha do método de interpolação (a conta da escala e da rotação). */
+const methodControl = () => ({
+  type: "choice", key: "method", label: "Interpolação", value: 1,
+  options: [{ label: "Vizinho mais próximo", value: 0 }, { label: "Bilinear", value: 1 }],
+});
 
 /** Tamanhos de filtro oferecidos (quadrados e ímpares). */
 const sizeControl = () => ({
@@ -170,6 +177,46 @@ export const ADJUSTMENTS = [
         options: [{ label: "Média", value: 0 }, { label: "Gaussiana", value: 1 }],
       },
       { key: "k", label: "k", min: 0, max: 5, step: 0.1, value: 2 },
+    ],
+  },
+
+  {
+    op: "scale",
+    group: "geometry",
+    title: "Escala",
+    hint: "Amplia ou reduz a imagem. A largura e a altura têm fatores separados (1 = tamanho atual). A interpolação estima os pixels novos.",
+    controls: [
+      { key: "scale_x", label: "Largura ×", min: 0.1, max: 4, step: 0.1, value: 1 },
+      { key: "scale_y", label: "Altura ×", min: 0.1, max: 4, step: 0.1, value: 1 },
+      methodControl(),
+    ],
+  },
+
+  {
+    op: "rotate",
+    group: "geometry",
+    title: "Rotação",
+    hint: "Gira a imagem em torno do centro, no sentido anti-horário (use ângulos negativos para o horário). Em \"Tela\", aumentar mostra a imagem inteira e manter o tamanho corta o que sair. Os cantos vazios ficam pretos.",
+    controls: [
+      { key: "angle", label: "Ângulo (°)", min: -180, max: 180, step: 1, value: 0 },
+      {
+        type: "choice", key: "expand", label: "Tela", value: 1,
+        options: [{ label: "Aumentar", value: 1 }, { label: "Manter o tamanho", value: 0 }],
+      },
+      methodControl(),
+    ],
+  },
+
+  {
+    op: "rotate_pivot",
+    group: "geometry",
+    title: "Rotação com pivô",
+    hint: "Gira em torno de um ponto à sua escolha, que fica parado. O pivô é dado em porcentagem da imagem: 0% é a esquerda e o topo, 100% é a direita e a base.",
+    controls: [
+      { key: "angle", label: "Ângulo (°)", min: -180, max: 180, step: 1, value: 0 },
+      { key: "pivot_x", label: "Pivô x (%)", min: 0, max: 100, step: 1, value: 50 },
+      { key: "pivot_y", label: "Pivô y (%)", min: 0, max: 100, step: 1, value: 50 },
+      methodControl(),
     ],
   },
 

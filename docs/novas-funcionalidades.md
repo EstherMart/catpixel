@@ -11,6 +11,7 @@ Cada funcionalidade passa por duas partes: o **backend** faz a conta, e o **fron
    - Valide os parâmetros e lance `ValueError` com mensagem clara quando forem inválidos.
    - Não importe nada de web (FastAPI, requests) aqui. Pillow só em `image_io.py`.
    - Não use funções de biblioteca que sejam o próprio requisito do trabalho. Manipule a matriz diretamente.
+   - O repositório tem um limite de **25 testes** no total (hoje são 25, então o limite foi atingido). Cada teste cobre uma funcionalidade e reúne várias verificações. Para uma funcionalidade nova, acrescente verificações a um teste existente do mesmo assunto em `backend/tests/` (ou junte testes antigos) em vez de criar um teste novo, e evite `parametrize`, que conta um teste por caso. Confira com `python -m pytest --collect-only -q`.
 2. **Registre a operação** em `backend/operations.py`, no dicionário `OPERATIONS`:
 
    ```python
@@ -72,6 +73,7 @@ O caminho acima serve para operações que mudam a imagem a partir de números. 
 | Filtro por convolução (já feito, serve de modelo) | Usa o controle `kernel` (tamanho, modelos prontos, grade de valores e divisor) e o controle `choice` (lista de opções). O backend recebe a matriz do filtro em `params`. Os filtros espaciais prontos (média, gaussiana, mediana, Laplaciano e high-boost) estão em `backend/model/spatial_filters.py`, e novos filtros lineares (como o Sobel) podem reaproveitar `convolve_raw`, de `backend/model/convolution.py`, que devolve os valores reais, sem limitar a 0 a 255. |
 | Chroma-key | Precisa enviar uma segunda imagem (a que substitui o fundo). Crie um endpoint de upload e um controle de arquivo. |
 | Espectro de Fourier editável | Precisa de um editor de desenho (pincel) no frontend e de endpoints que guardem o espectro e apliquem a inversa. |
+| Operação que muda o tamanho da imagem (escala e rotação, já feitas) | Declare `result_shape` na `Operation`, em `backend/operations.py`, com a função que calcula (altura, largura) do resultado. A rota de prévia envia esse tamanho no cabeçalho `X-Result-Size`, e a tela desenha a prévia reduzida no quadro certo. |
 | Esteganografia (já feita, serve de modelo) | Esconder é uma operação comum. Ler devolve texto, então tem o endpoint próprio `GET /api/steganography`. No frontend, use um controle com `type: "text"` e `reveal: true` em `ADJUSTMENTS`, e `preview: false` quando a prévia reduzida não faz sentido. |
 | Imagens coloridas | Hoje a matriz é 2D (cinza). As operações precisam aceitar matrizes `(altura, largura, 3)`, e `load_image` e `encode_image` precisam manter as cores. |
 | Resultados fora de 0 a 255 (filtros, Sobel) | Normalize os valores só para exibir, como o enunciado pede. Guarde o resultado real no histórico. |

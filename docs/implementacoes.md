@@ -192,29 +192,38 @@ Sobre os valores fora de 0 a 255: um filtro de derivada (como o Laplaciano) gera
 
 ## Transformações geométricas
 
+As três operações desta seção estão no botão **Geometria**, usam `backend/model/geometry.py` e seguem a seção 2.4.4 do livro-texto (interpolação de imagens). Todas funcionam por **mapeamento inverso**: para cada pixel da imagem de saída, o programa calcula de onde ele veio na imagem original (uma posição com casas decimais) e estima a intensidade ali por interpolação. O caminho contrário, empurrar cada pixel da entrada para a saída, deixaria buracos na imagem ampliada ou girada. As coordenadas são medidas no centro dos pixels, e o cálculo é feito para todos os pixels de uma vez com numpy, sem biblioteca de imagens.
+
+As duas interpolações são as mesmas na escala e nas rotações:
+
+1. **Vizinho mais próximo.** O pixel de saída copia o pixel original mais próximo da posição calculada. É rápido e não cria tons novos, mas deixa a imagem ampliada em blocos e as bordas girados serrilhadas.
+2. **Bilinear.** O pixel de saída é a média ponderada dos 4 pixels vizinhos da posição: `v = (1−dx)(1−dy)·f00 + dx(1−dy)·f10 + (1−dx)dy·f01 + dx·dy·f11`, em que `dx` e `dy` são as distâncias ao pixel de cima e da esquerda. Gera transições suaves, ao custo de um pouco mais de tempo.
+
 ### Escala (vizinho mais próximo e bilinear)
 
-> ⬜ Ainda não implementado.
+**O quê.** Amplia ou reduz a imagem. A largura é multiplicada por `scale_x` e a altura por `scale_y`, e os dois fatores são independentes (de 0,1 a 4 na interface). O resultado tem o tamanho novo: `round(largura · scale_x)` por `round(altura · scale_y)`.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** Fatores separados permitem esticar a imagem em um eixo só. O mapeamento usa o centro dos pixels (`x_origem = (x_saída + 0,5) / escala − 0,5`), assim a imagem não "anda" para um lado ao ampliar e os quatro cantos ficam alinhados. Uma posição calculada fora da imagem repete a borda.
+
+**Como.** `scale_image(matrix, scale_x, scale_y, method)` calcula as coordenadas de origem de cada pixel de saída e as entrega à função de interpolação. `scaled_shape` calcula o tamanho final sem montar a imagem. Fatores menores ou iguais a zero, não numéricos ou que gerem uma imagem de menos de 1 pixel ou de mais de 40 milhões de pixels lançam `ValueError`. A operação `"scale"` recebe `scale_x`, `scale_y` e `method` (0 = vizinho mais próximo, 1 = bilinear). Como a escala muda o tamanho, o histórico mostra o tamanho novo, e a tela reenquadra a imagem. Ampliar 2× uma imagem Full HD leva cerca de 1 s no vizinho mais próximo e 3 s no bilinear.
 
 ### Rotação (vizinho mais próximo e bilinear)
 
-> ⬜ Ainda não implementado.
+**O quê.** Gira a imagem em torno do centro. O ângulo é em graus, positivo no sentido anti-horário e negativo no horário. O que fica fora da imagem original vira preto. A opção **Tela** escolhe entre **Aumentar**, que cria uma imagem maior onde cabe a imagem toda, e **Manter o tamanho**, que corta o que sair.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** O sentido anti-horário é o da trigonometria, o que facilita conferir os testes: 90° dá o mesmo resultado que `numpy.rot90`. Na tela aumentada, o novo tamanho vem dos cantos girados: `largura' = |l·cos θ| + |a·sen θ|` e `altura' = |l·sen θ| + |a·cos θ|`, arredondados para cima.
+
+**Como.** `rotate_image(matrix, angle, method, pivot, expand)` gira cada posição de saída de volta ao ângulo oposto, em torno do pivô: `x_origem = cx + dx·cos θ − dy·sen θ` e `y_origem = cy + dx·sen θ + dy·cos θ`, em que `(dx, dy)` é a distância ao centro da saída (com o eixo y apontando para baixo). Sem `pivot`, o centro da imagem é o pivô. Um ponto é considerado dentro da imagem se estiver a até meio pixel dela, e fora disso fica preto. `rotated_shape` calcula o tamanho final. A operação `"rotate"` recebe `angle`, `expand` (0 ou 1) e `method`.
 
 ### Rotação com pivô
 
-> ⬜ Ainda não implementado.
+**O quê.** Gira a imagem em torno de um ponto escolhido, que fica parado. A tela mantém o tamanho original, então o que girar para fora dela é cortado, e o que sobrar vazio fica preto.
 
-- **O quê:**
-- **Por quê:**
-- **Como:**
+**Por quê.** Girar em torno do centro é um caso particular. O pivô vira um ponto fixo da transformação: ele tem a mesma posição na entrada e na saída. Por isso a tela não cresce aqui, porque aumentá-la deslocaria o pivô. O pedido de aumentar a tela junto com um pivô lança `ValueError`.
+
+**Como.** É a mesma função `rotate_image`, chamada com `pivot=(x, y)` em pixels. A interface recebe o pivô em **porcentagem** da imagem (`pivot_x` e `pivot_y`, de 0 a 100, em que 0% é a esquerda e o topo e 100% é a direita e a base), que o backend converte em pixels com `porcentagem / 100 · (tamanho − 1)`. Dessa forma o mesmo valor funciona em imagens de qualquer tamanho. Valores fora de 0 a 100 lançam `ValueError`. A operação `"rotate_pivot"` recebe `angle`, `pivot_x`, `pivot_y` e `method`.
+
+**Prévia com tamanho diferente.** Como a escala e a rotação aumentada mudam o tamanho, a rota `POST /api/preview` devolve o cabeçalho `X-Result-Size` (`LARGURAxALTURA`) com o tamanho final do resultado, mesmo que a prévia seja reduzida. A tela usa esse valor para desenhar a prévia no quadro certo. Cada operação pode declarar o tamanho do resultado em `result_shape`, em `backend/operations.py`; sem isso, o tamanho não muda.
 
 ## Domínio da frequência
 

@@ -54,11 +54,12 @@ function render(refit = false) {
 
   if (!hasImage) {
     stage.clear();
+    frameSize = "";
     $("status-zoom").textContent = "";
     return;
   }
   if (!hasImage || refit) compareSwitch.checked = false;
-  stage.setSize(state.width, state.height, { refit });
+  setFrame(state.width, state.height, { refit });
   showCurrentImage();
 }
 
@@ -74,6 +75,15 @@ async function refreshHistogram() {
   } catch (error) {
     showError(error);
   }
+}
+
+let frameSize = "";
+
+/** Ajusta o quadro da imagem na tela e reenquadra o zoom quando o tamanho muda. */
+function setFrame(width, height, { refit = false } = {}) {
+  const size = `${width}x${height}`;
+  stage.setSize(width, height, { refit: refit || size !== frameSize });
+  frameSize = size;
 }
 
 function showCurrentImage() {
@@ -94,10 +104,11 @@ async function previewAdjustment(op, params) {
   previewRequest?.abort();
   previewRequest = new AbortController();
   try {
-    const blob = await api.preview(op, params, previewRequest.signal);
+    const { blob, width, height } = await api.preview(op, params, previewRequest.signal);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     previewUrl = URL.createObjectURL(blob);
     compareSwitch.checked = false;
+    setFrame(width, height); // escala e rotação podem mudar o tamanho
     showCurrentImage();
   } catch (error) {
     showError(error);
@@ -106,7 +117,9 @@ async function previewAdjustment(op, params) {
 
 function cancelPreview() {
   discardPreview();
-  if (state.has_image) showCurrentImage();
+  if (!state.has_image) return;
+  setFrame(state.width, state.height);
+  showCurrentImage();
 }
 
 const adjustments = new AdjustmentsPanel($("adjustments"), {

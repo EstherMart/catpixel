@@ -12,7 +12,7 @@ from backend.model.histogram import compute_histogram
 from backend.model.image_io import encode_image, load_image
 from backend.model.sampling import downscale_for_preview
 from backend.model.steganography import reveal_message
-from backend.operations import run_operation
+from backend.operations import result_shape, run_operation
 from backend.session import EditorSession
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -77,7 +77,14 @@ def create_app(session: EditorSession | None = None) -> FastAPI:
         require_image()
         small = downscale_for_preview(session.current, PREVIEW_MAX_SIDE)
         _, result = run(request, small)
-        return Response(encode_image(result, "PNG"), media_type="image/png", headers=NO_CACHE)
+        # a prévia é reduzida; este cabeçalho diz o tamanho que o resultado final terá, para a tela
+        # exibir a prévia no quadro certo quando a operação muda o tamanho (escala, rotação)
+        try:
+            height, width = result_shape(request.op, session.current.shape, request.params)
+        except ValueError as error:  # a prévia coube, mas a imagem inteira ficaria grande demais
+            raise HTTPException(422, str(error))
+        headers = {**NO_CACHE, "X-Result-Size": f"{width}x{height}"}
+        return Response(encode_image(result, "PNG"), media_type="image/png", headers=headers)
 
     @app.post("/api/apply")
     def apply(request: OperationRequest):

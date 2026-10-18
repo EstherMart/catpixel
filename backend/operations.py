@@ -9,6 +9,7 @@ import numpy as np
 from backend.model.brightness import adjust_brightness
 from backend.model.convolution import convolve
 from backend.model.gamma_log import gamma_correction, log_transformation
+from backend.model.geometry import BILINEAR, NEAREST, rotate_image, rotated_shape, scale_image, scaled_shape
 from backend.model.histogram import equalize_histogram
 from backend.model.negative import negative_image
 from backend.model.piecewise_linear import piecewise_linear
@@ -29,6 +30,8 @@ Params = dict[str, Any]
 class Operation:
     label: Callable[[Params], str]
     run: Callable[[np.ndarray, Params], np.ndarray]
+    # (altura, largura) do resultado, para operações que mudam o tamanho da imagem; None = mesmo tamanho
+    result_shape: Callable[[tuple[int, int], Params], tuple[int, int]] | None = None
 
 
 def _int_param(params: Params, name: str) -> int:
@@ -58,6 +61,23 @@ def _text_param(params: Params, name: str) -> str:
     if not isinstance(value, str):
         raise ValueError(f"O parâmetro '{name}' deve ser um texto.")
     return value
+
+
+def _method_param(params: Params) -> str:
+    """O navegador manda 0 (vizinho mais próximo) ou 1 (bilinear)."""
+    return BILINEAR if _number_param(params, "method") else NEAREST
+
+
+METHOD_NAMES = {NEAREST: "vizinho mais próximo", BILINEAR: "bilinear"}
+
+
+def _pivot(matrix: np.ndarray, params: Params) -> tuple[float, float]:
+    """O pivô chega em porcentagem da imagem (0 a 100 em cada eixo) e é convertido em pixels."""
+    height, width = matrix.shape
+    percent_x, percent_y = _number_param(params, "pivot_x"), _number_param(params, "pivot_y")
+    if not (0 <= percent_x <= 100 and 0 <= percent_y <= 100):
+        raise ValueError("O pivô deve estar entre 0% e 100% em cada eixo.")
+    return percent_x / 100 * (width - 1), percent_y / 100 * (height - 1)
 
 
 def _kernel_param(params: Params, name: str) -> list[list[float]]:
@@ -159,11 +179,48 @@ OPERATIONS: dict[str, Operation] = {
         ),
     ),
 
+    "scale": Operation(
+        label=lambda params: f"Escala (x{params['scale_x']}, y{params['scale_y']}, {METHOD_NAMES[_method_param(params)]})",
+        run=lambda matrix, params: scale_image(
+            matrix, _number_param(params, "scale_x"), _number_param(params, "scale_y"), _method_param(params)
+        ),
+        result_shape=lambda shape, params: scaled_shape(
+            shape, _number_param(params, "scale_x"), _number_param(params, "scale_y")
+        ),
+    ),
+
+    "rotate": Operation(
+        label=lambda params: f"Rotação ({params['angle']}°, {METHOD_NAMES[_method_param(params)]})",
+        run=lambda matrix, params: rotate_image(
+            matrix,
+            _number_param(params, "angle"),
+            _method_param(params),
+            expand=bool(_number_param(params, "expand")),
+        ),
+        result_shape=lambda shape, params: rotated_shape(
+            shape, _number_param(params, "angle"), bool(_number_param(params, "expand"))
+        ),
+    ),
+
+    "rotate_pivot": Operation(
+        label=lambda params: (
+            f"Rotação com pivô ({params['angle']}°, pivô {params['pivot_x']}%, {params['pivot_y']}%, "
+            f"{METHOD_NAMES[_method_param(params)]})"
+        ),
+        run=lambda matrix, params: rotate_image(
+            matrix,
+            _number_param(params, "angle"),
+            _method_param(params),
+            pivot=_pivot(matrix, params),
+        ),
+    ),
+
     "hide_message": Operation(
         label=lambda params: "Esteganografia (mensagem escondida)",  # o texto secreto não vai para o histórico
         run=lambda matrix, params: hide_message(matrix, _text_param(params, "text")),
     ),
 }
+
 
 def run_operation(name: str, matrix: np.ndarray, params: Params) -> tuple[str, np.ndarray]:
     """Executa a operação e devolve (rótulo para o histórico, nova matriz)."""
@@ -172,3 +229,9 @@ def run_operation(name: str, matrix: np.ndarray, params: Params) -> tuple[str, n
     operation = OPERATIONS[name]
     result = operation.run(matrix, params)  # valida os parâmetros antes de montar o rótulo
     return operation.label(params), result
+
+
+def result_shape(name: str, shape: tuple[int, int], params: Params) -> tuple[int, int]:
+    """(altura, largura) que o resultado da operação terá, sem calcular a imagem."""
+    operation = OPERATIONS[name]
+    return operation.result_shape(shape, params) if operation.result_shape else shape

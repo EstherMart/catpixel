@@ -98,7 +98,7 @@ def test_point_operations_are_applied_recorded_and_validated(client):
         assert apply(client, op, params).status_code == 422
 
 
-def test_histogram_equalization_convolution_and_spatial_filters(client):
+def test_histogram_equalization_convolution_spatial_filters_and_geometry(client):
     open_sample(client)  # 8x6, tudo em 200
     counts = client.get("/api/histogram").json()["counts"]
     assert len(counts) == 256 and counts[200] == 48 and sum(counts) == 48
@@ -130,6 +130,25 @@ def test_histogram_equalization_convolution_and_spatial_filters(client):
         ("convolution", {"kernel": [[1, 1], [1, 1]], "divisor": 1, "normalize": 0}),
         ("convolution", {"kernel": identity, "divisor": 0, "normalize": 0}),
         ("convolution", {"kernel": "x", "divisor": 1, "normalize": 0}),
+    ):
+        assert apply(client, op, params).status_code == 422
+
+    open_sample(client)  # 8x6
+    state = apply(client, "scale", {"scale_x": 2, "scale_y": 3, "method": 0}).json()
+    assert state["history"][-1] == "Escala (x2, y3, vizinho mais próximo)"
+    assert (state["width"], state["height"]) == (16, 18)  # escala muda o tamanho da imagem
+    preview = client.post("/api/preview", json={"op": "scale", "params": {"scale_x": 2, "scale_y": 1, "method": 1}})
+    assert preview.headers["x-result-size"] == "32x18"  # tamanho final, mesmo com a prévia reduzida
+    state = apply(client, "rotate", {"angle": 90, "expand": 1, "method": 1}).json()
+    assert state["history"][-1] == "Rotação (90°, bilinear)" and (state["width"], state["height"]) == (18, 16)
+    state = apply(client, "rotate_pivot", {"angle": 30, "pivot_x": 0, "pivot_y": 100, "method": 1}).json()
+    assert state["history"][-1] == "Rotação com pivô (30°, pivô 0%, 100%, bilinear)"
+    assert (state["width"], state["height"]) == (18, 16)  # com pivô a tela não muda
+    for op, params in (
+        ("scale", {"scale_x": 0, "scale_y": 1, "method": 1}),
+        ("scale", {"scale_x": 1, "scale_y": 1}),
+        ("rotate", {"angle": "90", "expand": 1, "method": 1}),
+        ("rotate_pivot", {"angle": 10, "pivot_x": 150, "pivot_y": 0, "method": 1}),
     ):
         assert apply(client, op, params).status_code == 422
 

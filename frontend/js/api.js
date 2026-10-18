@@ -36,9 +36,14 @@ export const api = {
     return (await postJson("/api/apply", { op, params })).json();
   },
 
-  /** Devolve uma versão reduzida da imagem com a operação aplicada, sem gravar no histórico. */
+  /**
+   * Devolve uma versão reduzida da imagem com a operação aplicada, sem gravar no histórico,
+   * junto com o tamanho que o resultado final terá (muda em escala e rotação).
+   */
   async preview(op, params, signal) {
-    return (await postJson("/api/preview", { op, params }, signal)).blob();
+    const response = await postJson("/api/preview", { op, params }, signal);
+    const [width, height] = response.headers.get("X-Result-Size").split("x").map(Number);
+    return { blob: await response.blob(), width, height };
   },
 
   /** Contagem de pixels por intensidade (256 valores) da imagem atual ou da original. */
