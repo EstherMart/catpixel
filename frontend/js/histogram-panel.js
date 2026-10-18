@@ -11,9 +11,14 @@ export class HistogramPanel {
   #counts = null;
   #logScale = false;
 
-  constructor(container) {
+  /** `logCheckbox` é a caixa de escala logarítmica, que fica no título do painel. */
+  constructor(container, logCheckbox) {
     this.#container = container;
     this.#canvas = Object.assign(document.createElement("canvas"), { className: "histogram-canvas" });
+    logCheckbox.addEventListener("change", () => {
+      this.#logScale = logCheckbox.checked;
+      if (this.#counts) this.draw(this.#counts);
+    });
     window.addEventListener("resize", () => this.#counts && this.draw(this.#counts));
     this.clear();
   }
@@ -31,14 +36,7 @@ export class HistogramPanel {
     if (!this.#canvas.isConnected) {
       const axis = Object.assign(document.createElement("div"), { className: "histogram-axis" });
       axis.append(...["0", "128", "255"].map((text) => Object.assign(document.createElement("span"), { textContent: text })));
-      const toggle = Object.assign(document.createElement("label"), { className: "histogram-scale" });
-      const checkbox = Object.assign(document.createElement("input"), { type: "checkbox", checked: this.#logScale });
-      checkbox.addEventListener("change", () => {
-        this.#logScale = checkbox.checked;
-        this.draw(this.#counts);
-      });
-      toggle.append(checkbox, " Escala logarítmica");
-      this.#container.replaceChildren(this.#canvas, axis, toggle);
+      this.#container.replaceChildren(this.#canvas, axis);
     }
 
     const ratio = window.devicePixelRatio || 1;

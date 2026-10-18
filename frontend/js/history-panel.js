@@ -16,8 +16,12 @@ export function renderHistory(container, state, onSelect) {
     const button = document.createElement("button");
     button.className = "history-item";
     if (index === state.index) button.classList.add("current");
-    if (index > state.index) button.classList.add("future");
     button.textContent = label;
+    if (index > state.index) {
+      button.classList.add("future");
+      button.title = "Passo desfeito: clique aqui ou use Ctrl+Shift+Z para refazer";
+      button.append(Object.assign(document.createElement("span"), { className: "history-undone", textContent: "desfeito" }));
+    }
     button.addEventListener("click", () => onSelect(index));
     item.append(button);
     container.append(item);

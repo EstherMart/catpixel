@@ -86,7 +86,7 @@ A função `mean_brightness`, no mesmo arquivo, ainda não é usada por nada.
 - `reveal_message(matrix)` lê o cabeçalho e devolve o texto. Se a assinatura não bater, o tamanho for impossível ou o UTF-8 for inválido, devolve `None`. Assim, uma imagem sem mensagem mostra "nenhuma mensagem" e não lixo.
 - `capacity_bytes(matrix)` calcula `(largura · altura − 48) // 8`. Uma mensagem maior que isso lança `ValueError`.
 
-Esconder é uma operação comum (`"hide_message"`, com o parâmetro de texto `text`), então entra no histórico e pode ser desfeita. O rótulo do histórico não mostra o texto secreto. Revelar devolve texto, não imagem, e por isso tem endpoint próprio: `GET /api/steganography` responde `{"found": bool, "text": str}` e lê a imagem inteira, nunca a prévia reduzida. O cartão **Esteganografia** tem um campo de texto, o botão **Esconder** e o botão **Revelar mensagem da imagem**. Não há prévia, porque ela é reduzida e perderia a mensagem.
+Esconder é uma operação comum (`"hide_message"`, com o parâmetro de texto `text`), então entra no histórico e pode ser desfeita. O rótulo do histórico não mostra o texto secreto. Revelar devolve texto, não imagem, e por isso tem endpoint próprio: `GET /api/steganography` responde `{"found": bool, "text": str}` e lê a imagem inteira, nunca a prévia reduzida. O item **Esteganografia → Esconder e revelar mensagem…** abre um painel com um campo de texto, o botão **Esconder** e o botão **Revelar mensagem da imagem**. Não há prévia, porque ela é reduzida e perderia a mensagem.
 
 **Limitações.** Só o BMP guarda a mensagem: o JPG comprime com perdas e apaga os LSBs. Qualquer operação feita depois de esconder (brilho, negativo etc.) também destrói a mensagem, então esconda por último e salve em BMP. Imagens coloridas viram cinza ao abrir (veja [Abrir e salvar imagens](#abrir-e-salvar-imagens)), o que não afeta um BMP cinza salvo por este programa.
 
@@ -94,7 +94,7 @@ Esconder é uma operação comum (`"hide_message"`, com o parâmetro de texto `t
 
 ### Exibição do histograma
 
-**O quê.** Mostra, num gráfico de barras, quantos pixels existem em cada intensidade, de 0 (preto) a 255 (branco). O gráfico fica no topo do painel lateral e se atualiza a cada edição, desfazer ou salto no histórico. Com **Ver original** ligado, mostra o histograma da imagem original.
+**O quê.** Mostra, num gráfico de barras, quantos pixels existem em cada intensidade, de 0 (preto) a 255 (branco). O gráfico fica no topo do painel lateral, com a caixa **Escala log.** no título, e se atualiza a cada edição, desfazer ou salto no histórico. Com **Ver original** ligado, mostra o histograma da imagem original.
 
 **Por quê.** O histograma explica o efeito das outras operações: o brilho desloca as barras, o contraste as espalha e a equalização as distribui. Mostrá-lo o tempo todo permite comparar antes e depois sem abrir nada.
 
@@ -106,7 +106,7 @@ Esconder é uma operação comum (`"hide_message"`, com o parâmetro de texto `t
 
 **Por quê.** Subtrair `cdf_min` faz o menor tom da imagem virar 0 e o maior virar 255, aproveitando todo o intervalo. Uma imagem de um único tom não tem o que equalizar e volta igual, o que também evita divisão por zero.
 
-**Como.** `build_equalization_lut(counts)` e `equalize_histogram(matrix)`, em `backend/model/histogram.py`, calculam a tabela a partir do histograma e a aplicam com `apply_lut`, como nas outras operações pontuais. A operação `"equalize"` não tem parâmetros, e o cartão **Equalização de histograma** fica no grupo **Tons e contraste**. Para ver o efeito, aplique e compare o gráfico do histograma com **Ver original**.
+**Como.** `build_equalization_lut(counts)` e `equalize_histogram(matrix)`, em `backend/model/histogram.py`, calculam a tabela a partir do histograma e a aplicam com `apply_lut`, como nas outras operações pontuais. A operação `"equalize"` não tem parâmetros, e o atalho **Equalização** (lista de Ajustes, no painel Parâmetros) abre os parâmetros dela. Para ver o efeito, aplique e compare o gráfico do histograma com **Ver original**.
 
 ### Filtro genérico por convolução
 
@@ -126,7 +126,7 @@ O passo 3 faz a conta de todos os pixels de uma vez para cada posição do filtr
 
 O resultado de um filtro pode sair de 0 a 255 (o Laplaciano gera valores negativos, por exemplo). A opção **Resultado** do cartão escolhe o que fazer: **Cortar em 0 a 255** limita os valores, e **Normalizar** leva o menor valor para 0 e o maior para 255, que é o que se quer ver em filtros de borda. Em ambos os casos a imagem gravada no histórico já está em 0 a 255, e o valor real não é guardado.
 
-Ligação com a interface: a operação `"convolution"` recebe `kernel` (lista de listas), `divisor` e `normalize` (0 ou 1). O cartão **Filtro por convolução** fica no grupo **Filtros** e usa os controles novos de `frontend/js/controls.js` (`kernel` e `choice`). A pré-visualização roda numa versão reduzida da imagem, então o efeito dela parece um pouco mais forte que o resultado final.
+Ligação com a interface: a operação `"convolution"` recebe `kernel` (lista de listas), `divisor` e `normalize` (0 ou 1). O item **Filtros → Filtro por convolução…** abre o painel de parâmetros, que usa os controles novos de `frontend/js/controls.js` (`kernel` e `choice`). A pré-visualização roda numa versão reduzida da imagem, então o efeito dela parece um pouco mais forte que o resultado final.
 
 ## Filtros espaciais
 

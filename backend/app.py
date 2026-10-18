@@ -33,6 +33,14 @@ def create_app(session: EditorSession | None = None) -> FastAPI:
     session = session or EditorSession()
     app = FastAPI(title="CatPixel")
 
+    @app.middleware("http")
+    async def revalidate_frontend_files(request, call_next):
+        """Os arquivos da interface mudam durante o desenvolvimento: o navegador deve conferir a cada carga."""
+        response = await call_next(request)
+        if not request.url.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
     def require_image() -> None:
         if not session.has_image:
             raise HTTPException(409, "Abra uma imagem primeiro.")

@@ -25,11 +25,12 @@ Cada funcionalidade passa por duas partes: o **backend** faz a conta, e o **fron
 
 ## 2. Frontend (JavaScript)
 
-Em `frontend/js/adjustments-panel.js`, adicione uma entrada em `ADJUSTMENTS`:
+Em `frontend/js/adjustments-panel.js`, adicione uma entrada em `ADJUSTMENTS`. O campo `group` escolhe onde a operação aparece. As chaves e os nomes estão em `GROUPS`; para uma categoria nova, acrescente uma linha lá e ela vira um menu na barra superior. O grupo `QUICK_GROUP` (`"tones"`, os ajustes mais usados) é a exceção: não vira menu, e sim uma lista de atalhos no painel lateral enquanto nada está aberto. Escolher uma operação mostra os parâmetros dela nesse painel:
 
 ```js
 {
   op: "negative",                 // igual à chave registrada em OPERATIONS
+  group: "tones",                 // grupo "Ajustes": aparece como atalho no painel, sem menu
   title: "Negativo",
   hint: "Inverte as intensidades: cada pixel vira 255 menos o valor original.",
   controls: [],                   // sem parâmetros: o cartão só tem Aplicar e Cancelar
@@ -59,7 +60,7 @@ Sem `type`, o controle é um slider. Os outros tipos, definidos em `frontend/js/
 uvicorn backend.app:app --reload --port 8765
 ```
 
-Abra `http://localhost:8765`, abra uma imagem e experimente o novo cartão. Rode também `python -m pytest`.
+Abra `http://localhost:8765`, abra uma imagem e experimente o novo item no menu. Rode também `python -m pytest`.
 
 ## Quando é preciso mais que isso
 

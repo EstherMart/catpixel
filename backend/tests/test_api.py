@@ -202,3 +202,10 @@ def test_convolution_rejects_bad_parameters(client):
         {"divisor": 1, "normalize": 0},
     ):
         assert client.post("/api/apply", json={"op": "convolution", "params": params}).status_code == 422
+
+
+def test_frontend_files_are_revalidated_by_the_browser(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-cache"
+    assert client.get("/api/state").headers.get("cache-control") != "no-cache"

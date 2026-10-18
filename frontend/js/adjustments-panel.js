@@ -1,18 +1,24 @@
 /**
- * Painel de ajustes. Cada ajuste é uma entrada em ADJUSTMENTS ligada a uma operação do backend.
+ * Painel de parâmetros. Cada ajuste é uma entrada em ADJUSTMENTS ligada a uma operação do backend.
  * Para ter um novo ajuste: registrar a operação em backend/operations.py e listar aqui.
- * `group` é a chave de GROUPS: cada grupo vira uma seção recolhível no painel.
+ * `group` é a chave de GROUPS: cada grupo vira um menu na barra superior, e escolher o item
+ * do menu mostra aqui os parâmetros dele (um por vez). O grupo QUICK_GROUP, o mais usado,
+ * não vira menu: ele aparece como lista de atalhos neste painel enquanto nada está aberto.
  */
 
-import { buildControl } from "./controls.js";
+import { buildControl } from "./controls.js?v=5";
 
-const GROUPS = {
-  tones: "Tons e contraste",
+/** Título de cada menu da barra superior. */
+export const GROUPS = {
+  tones: "Ajustes",
   filters: "Filtros",
-  hide: "Esconder dados",
+  hide: "Esteganografia",
 };
 
-const ADJUSTMENTS = [
+/** Grupo mostrado como atalhos no painel, em vez de menu. */
+export const QUICK_GROUP = "tones";
+
+export const ADJUSTMENTS = [
   {
     op: "threshold",
     group: "tones",
@@ -112,7 +118,7 @@ const ADJUSTMENTS = [
   {
     op: "hide_message",
     group: "hide",
-    title: "Esteganografia",
+    title: "Esconder e revelar mensagem",
     hint: "Esconde um texto nos pixels, sem mudar a aparência. Salve em BMP: o JPG apaga a mensagem, e qualquer ajuste feito depois também.",
     preview: false, // a prévia é reduzida e perderia a mensagem
     reveal: true,
@@ -128,22 +134,24 @@ export class AdjustmentsPanel {
   #callbacks;
   #cards = [];
   #active = null;
+  #placeholder;
   #previewTimer;
 
   /** callbacks: { preview(op, params), apply(op, params), cancel(), reveal() → texto ou null } */
   constructor(container, callbacks) {
     this.#container = container;
     this.#callbacks = callbacks;
-    for (const [key, title] of Object.entries(GROUPS)) {
-      const body = this.#buildGroup(title);
-      ADJUSTMENTS.filter((adjustment) => adjustment.group === key)
-        .forEach((adjustment) => this.#cards.push(this.#buildCard(adjustment, body)));
-    }
 
-    const note = document.createElement("p");
-    note.className = "coming-soon";
-    note.textContent = "Novos ajustes e filtros chegam aqui a cada aula.";
-    container.append(note);
+    this.#placeholder = this.#buildQuickList();
+    container.append(this.#placeholder);
+
+    ADJUSTMENTS.forEach((adjustment) => this.#cards.push(this.#buildCard(adjustment)));
+  }
+
+  /** Mostra os parâmetros da operação `op` (a que estava aberta é cancelada). */
+  open(op) {
+    const entry = this.#cards.find((card) => card.adjustment.op === op);
+    if (entry) this.#open(entry);
   }
 
   setEnabled(enabled) {
@@ -156,41 +164,34 @@ export class AdjustmentsPanel {
     this.#closeActive();
   }
 
-  /** Seção recolhível que reúne ajustes parecidos. Devolve o elemento onde os cartões entram. */
-  #buildGroup(title) {
-    const section = document.createElement("section");
-    section.className = "adjust-group open";
+  /** O que o painel mostra com nada aberto: atalhos para os ajustes mais usados. */
+  #buildQuickList() {
+    const list = document.createElement("div");
+    list.append(Object.assign(document.createElement("h3"), { className: "quick-title", textContent: GROUPS[QUICK_GROUP] }));
 
-    const header = Object.assign(document.createElement("button"), {
-      className: "adjust-group-header", textContent: title,
-    });
-    const body = document.createElement("div");
-    body.className = "adjust-group-body";
+    for (const adjustment of ADJUSTMENTS.filter((item) => item.group === QUICK_GROUP)) {
+      const button = Object.assign(document.createElement("button"), { className: "quick-item", textContent: adjustment.title });
+      button.addEventListener("click", () => this.open(adjustment.op));
+      list.append(button);
+    }
 
-    header.addEventListener("click", () => {
-      const collapsing = section.classList.contains("open");
-      // Recolher um grupo descarta a prévia do cartão aberto dentro dele.
-      if (collapsing && body.contains(this.#active?.card)) this.#closeActive(true);
-      section.classList.toggle("open", !collapsing);
-      body.hidden = collapsing;
-    });
-
-    section.append(header, body);
-    this.#container.append(section);
-    return body;
+    list.append(Object.assign(document.createElement("p"), {
+      className: "coming-soon", textContent: "Filtros e outras ferramentas estão nos menus acima.",
+    }));
+    return list;
   }
 
-  #buildCard(adjustment, parent) {
+  #buildCard(adjustment) {
     const card = document.createElement("section");
     card.className = "adjust-card";
+    card.hidden = true;
 
-    const header = document.createElement("button");
+    const header = document.createElement("h3");
     header.className = "adjust-header";
     header.textContent = adjustment.title;
 
     const body = document.createElement("div");
     body.className = "adjust-body";
-    body.hidden = true;
 
     const hint = document.createElement("p");
     hint.className = "adjust-hint";
@@ -210,7 +211,6 @@ export class AdjustmentsPanel {
 
     const entry = { adjustment, card, body, inputs, result: null };
     if (adjustment.reveal) this.#addReveal(entry);
-    header.addEventListener("click", () => (this.#active === entry ? this.#closeActive(true) : this.#open(entry)));
     cancel.addEventListener("click", () => this.#closeActive(true));
     apply.addEventListener("click", async () => {
       clearTimeout(this.#previewTimer);
@@ -220,7 +220,7 @@ export class AdjustmentsPanel {
     });
 
     card.append(header, body);
-    parent.append(card);
+    this.#container.append(card);
     return entry;
   }
 
@@ -247,8 +247,8 @@ export class AdjustmentsPanel {
   #open(entry) {
     this.#closeActive(true);
     this.#active = entry;
-    entry.card.classList.add("open");
-    entry.body.hidden = false;
+    entry.card.hidden = false;
+    this.#placeholder.hidden = true;
     this.#schedulePreview();
   }
 
@@ -257,8 +257,8 @@ export class AdjustmentsPanel {
     const entry = this.#active;
     if (!entry) return;
     this.#active = null;
-    entry.card.classList.remove("open");
-    entry.body.hidden = true;
+    entry.card.hidden = true;
+    this.#placeholder.hidden = false;
     entry.inputs.forEach((input) => input.reset());
     if (entry.result) entry.result.hidden = true;
     if (cancelPreview) this.#callbacks.cancel();

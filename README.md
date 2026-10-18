@@ -160,9 +160,9 @@ Abra <http://localhost:8765> no navegador. O mesmo servidor entrega a interface 
 Na interface:
 
 1. Clique em **Abrir imagem** ou arraste um arquivo para a janela.
-2. Abra um ajuste no painel da direita (por exemplo, **Limiarização**) e mexa no controle. A pré-visualização aparece na hora.
+2. Escolha uma operação. Os ajustes mais usados (limiarização, negativo, brilho, gama, logaritmo, linear por partes e equalização) são atalhos no painel **Parâmetros**, à direita, e os filtros e a esteganografia ficam nos menus da barra superior. Os parâmetros da operação escolhida aparecem nesse mesmo painel, e a pré-visualização muda na hora ao mexer nos controles. O gráfico do histograma fica acima desse painel.
 3. Clique em **Aplicar** para gravar a edição no histórico, ou em **Cancelar**.
-4. Use **Ver original** para comparar, o painel **Histórico** (ou Ctrl+Z / Ctrl+Shift+Z) para voltar ou refazer, e o menu **Arquivo** para salvar em BMP ou JPG.
+4. Use **Ver original** para comparar, o painel **Histórico**, na coluna da direita (ou Ctrl+Z / Ctrl+Shift+Z), para voltar ou refazer, e o menu **Arquivo** para salvar em BMP ou JPG.
 5. Roda do mouse dá zoom e arrastar move a imagem. Duplo clique ajusta à tela.
 
 O servidor guarda uma única imagem em edição, pensada para uso local por uma pessoa.

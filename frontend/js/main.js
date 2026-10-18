@@ -1,15 +1,15 @@
-import { AdjustmentsPanel } from "./adjustments-panel.js";
-import { api } from "./api.js";
-import { HistogramPanel } from "./histogram-panel.js";
-import { renderHistory } from "./history-panel.js";
-import { buildMenubar } from "./menubar.js";
-import { StageView } from "./stage-view.js";
-import { showToast } from "./toast.js";
+import { ADJUSTMENTS, AdjustmentsPanel, GROUPS, QUICK_GROUP } from "./adjustments-panel.js?v=5";
+import { api } from "./api.js?v=5";
+import { HistogramPanel } from "./histogram-panel.js?v=5";
+import { renderHistory } from "./history-panel.js?v=5";
+import { buildMenubar } from "./menubar.js?v=5";
+import { StageView } from "./stage-view.js?v=5";
+import { showToast } from "./toast.js?v=5";
 
 const $ = (id) => document.getElementById(id);
 
 const stage = new StageView();
-const histogram = new HistogramPanel($("histogram"));
+const histogram = new HistogramPanel($("histogram"), $("histogram-log"));
 const fileInput = $("file-input");
 const compareSwitch = $("compare");
 
@@ -179,8 +179,21 @@ buildMenubar($("menus"), [
       { label: "Salvar como JPG", action: () => download("jpg"), enabled: hasImage },
     ],
   },
+  // um menu por grupo de ajustes (o grupo mais usado fica como atalhos no painel); escolher o item mostra os parâmetros
+  ...Object.entries(GROUPS).filter(([key]) => key !== QUICK_GROUP).map(([key, label]) => ({
+    label,
+    items: ADJUSTMENTS.filter((adjustment) => adjustment.group === key).map((adjustment) => ({
+      label: `${adjustment.title}…`,
+      action: () => adjustments.open(adjustment.op),
+      enabled: hasImage,
+    })),
+  })),
 ]);
 
+$("history-toggle").addEventListener("click", () => {
+  const collapsed = $("panel-history").classList.toggle("collapsed");
+  $("history-toggle").setAttribute("aria-expanded", String(!collapsed));
+});
 $("welcome-open").addEventListener("click", chooseFile);
 $("tool-zoom-in").addEventListener("click", () => stage.zoomBy(1.5));
 $("tool-zoom-out").addEventListener("click", () => stage.zoomBy(1 / 1.5));
