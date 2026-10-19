@@ -30,10 +30,13 @@ from backend.model.negative import negative_image
 from backend.model.piecewise_linear import piecewise_linear
 from backend.model.spatial_filters import (
     gaussian_filter,
+    gradient_magnitude,
     high_boost_filter,
     laplacian_filter,
     mean_filter,
     median_filter,
+    sobel_x_filter,
+    sobel_y_filter,
 )
 from backend.model.steganography import hide_message
 from backend.model.thresholding import threshold_image
@@ -222,6 +225,21 @@ OPERATIONS: dict[str, Operation] = {
             _number_param(params, "k"),
             gaussian=bool(_number_param(params, "gaussian")),
         ),
+    ),
+
+    "sobel_x": Operation(
+    label=lambda params: "Sobel X",
+    run=lambda matrix, params: sobel_x_filter(matrix),
+    ),
+
+    "sobel_y": Operation(
+        label=lambda params: "Sobel Y",
+        run=lambda matrix, params: sobel_y_filter(matrix),
+    ),
+
+    "gradient": Operation(
+        label=lambda params: "Magnitude do gradiente (Sobel)",
+        run=lambda matrix, params: gradient_magnitude(matrix),
     ),
 
     "scale": Operation(

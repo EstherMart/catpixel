@@ -4,10 +4,14 @@ import pytest
 from backend.model.spatial_filters import (
     gaussian_filter,
     gaussian_kernel,
+    gradient_magnitude,
     high_boost_filter,
     laplacian_filter,
     mean_filter,
     median_filter,
+    sobel_components,
+    sobel_x_filter,
+    sobel_y_filter,
 )
 
 PHOTO = np.random.default_rng(5).integers(0, 256, size=(20, 24), dtype=np.uint8)
@@ -59,3 +63,37 @@ def test_invalid_sizes_and_negative_k_are_rejected():
             mean_filter(PHOTO, size)
     with pytest.raises(ValueError):
         high_boost_filter(PHOTO, 3, -1)
+
+def test_sobel_and_gradient():
+    # Uma região uniforme não possui bordas.
+    gx, gy = sobel_components(FLAT)
+
+    assert np.allclose(gx, 0)
+    assert np.allclose(gy, 0)
+
+    # STEP possui uma borda vertical.
+    # Portanto, a variação na direção X deve ser forte.
+    gx, gy = sobel_components(STEP)
+
+    assert np.max(np.abs(gx)) > 0
+    assert np.max(np.abs(gy)) == 0
+
+    sobel_x = sobel_x_filter(STEP)
+    sobel_y = sobel_y_filter(STEP)
+    magnitude = gradient_magnitude(STEP)
+
+    # O processamento deve preservar o tamanho da imagem.
+    assert sobel_x.shape == STEP.shape
+    assert sobel_y.shape == STEP.shape
+    assert magnitude.shape == STEP.shape
+
+    # As imagens prontas para exibição devem ser uint8.
+    assert sobel_x.dtype == np.uint8
+    assert sobel_y.dtype == np.uint8
+    assert magnitude.dtype == np.uint8
+
+    # Longe da borda, a magnitude deve ser zero.
+    assert magnitude[4, 0] == 0
+
+    # Na região da borda deve existir resposta.
+    assert magnitude[4, 3] > 0 or magnitude[4, 4] > 0

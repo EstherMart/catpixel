@@ -183,6 +183,33 @@ export const ADJUSTMENTS = [
   },
 
   {
+    op: "sobel_x",
+    group: "filters",
+    title: "Sobel X",
+    hint:
+      "Aproxima a derivada na direção x e realça principalmente bordas verticais. O resultado é normalizado para exibição.",
+      controls: [],
+  },
+
+  {
+    op: "sobel_y",
+    group: "filters",
+    title: "Sobel Y",
+    hint:
+      "Aproxima a derivada na direção y e realça principalmente bordas horizontais. O resultado é normalizado para exibição.",
+      controls: [],
+  },
+
+  {
+    op: "gradient",
+    group: "filters",
+    title: "Magnitude do gradiente",
+    hint:
+      "Combina Sobel X e Sobel Y por M = √(gx² + gy²), destacando bordas independentemente da direção.",
+    controls: [],
+  },
+
+  {
     op: "scale",
     group: "geometry",
     title: "Escala",
