@@ -18,6 +18,20 @@ LAPLACIAN_8 = [[1, 1, 1], [1, -8, 1], [1, 1, 1]]
 
 MEDIAN_BAND_ROWS = 64  # a mediana empilha todas as vizinhanças; em faixas de linhas, a memória fica limitada
 
+# Operadores de Sobel (Figura 3.41).
+# X mede variações na direção horizontal (e destaca bordas verticais).
+# Y mede variações na direção vertical (e destaca bordas horizontais).
+SOBEL_X = [
+    [-1, 0, 1],
+    [-2, 0, 2],
+    [-1, 0, 1],
+]
+
+SOBEL_Y = [
+    [-1, -2, -1],
+    [ 0,  0,  0],
+    [ 1,  2,  1],
+]
 
 def mean_kernel(size: int):
     """Filtro da média: todos os pesos 1, com divisor size²."""
@@ -64,6 +78,55 @@ def median_filter(matrix: np.ndarray, size: int) -> np.ndarray:
 
     return result
 
+def sobel_components(matrix: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Calcula as respostas brutas dos operadores de Sobel em X e Y.
+
+    Os resultados permanecem em float porque podem conter
+    valores negativos e valores maiores que 255.
+    """
+
+    if matrix.ndim != 2:
+        raise ValueError("A imagem deve estar em escala de cinza.")
+
+    gx = convolve_raw(matrix, SOBEL_X)
+    gy = convolve_raw(matrix, SOBEL_Y)
+
+    return gx, gy
+
+
+def sobel_x_filter(matrix: np.ndarray) -> np.ndarray:
+    """
+    Aplica Sobel X e normaliza o resultado apenas para exibição.
+    """
+
+    gx, _ = sobel_components(matrix)
+
+    return normalize_for_display(gx)
+
+
+def sobel_y_filter(matrix: np.ndarray) -> np.ndarray:
+    """
+    Aplica Sobel Y e normaliza o resultado apenas para exibição.
+    """
+
+    _, gy = sobel_components(matrix)
+
+    return normalize_for_display(gy)
+
+
+def gradient_magnitude(matrix: np.ndarray) -> np.ndarray:
+    """
+    Calcula a magnitude do gradiente:
+
+        M = sqrt(gx² + gy²)
+    """
+
+    gx, gy = sobel_components(matrix)
+
+    magnitude = np.sqrt(gx * gx + gy * gy)
+
+    return normalize_for_display(magnitude)
 
 def laplacian_filter(matrix: np.ndarray, diagonals: bool = False, sharpen: bool = True) -> np.ndarray:
     """Laplaciano da imagem.
