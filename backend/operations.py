@@ -109,6 +109,20 @@ def _mask_param(params: Params, name: str) -> np.ndarray:
     except (ValueError, UnidentifiedImageError, OSError):
         raise ValueError(f"O parâmetro '{name}' deve ser uma imagem codificada em base64.")
 
+def _grayscale_mask_param(params: Params, name: str) -> np.ndarray:
+    """
+    Lê uma máscara usada no espectro de Fourier
+    e garante que ela seja uma matriz 2D.
+    """
+    mask = _mask_param(params, name)
+
+    # O canvas do navegador envia PNG como RGB/RGBA.
+    # Como a máscara contém apenas tons de cinza,
+    # podemos usar apenas um dos canais.
+    if mask.ndim == 3:
+        mask = mask[:, :, 0]
+
+    return mask
 
 def _optional_image_param(params: Params, name: str) -> np.ndarray | None:
     """Como `_mask_param`, mas o texto vazio ou ausente significa "nenhuma imagem"."""
@@ -282,7 +296,7 @@ OPERATIONS: dict[str, Operation] = {
         label=lambda params: f"Filtro no espectro ({'DFT' if params['algorithm'] else 'FFT'})",
         run=lambda matrix, params: filter_with_mask(
             matrix,
-            _mask_param(params, "mask"),
+            _grayscale_mask_param(params, "mask"),
             DFT if _number_param(params, "algorithm") else FFT,
             bool(_number_param(params, "normalize")),
         ),
